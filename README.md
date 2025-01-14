@@ -152,75 +152,22 @@ npm test:coverage
 # or
 yarn test:coverage
 ```
-
-
-## 🎯 Testing Examples
-
-### Component Testing
-```typescript
-import { render, screen } from '@testing-library/react';
-import Button from '../components/Button';
-
-describe('Button Component', () => {
-  it('renders with correct text', () => {
-    render(<Button>Click me</Button>);
-    expect(screen.getByText('Click me')).toBeInTheDocument();
-  });
-});
-```
-
-### Async Testing
-```typescript
-import { fetchUserData } from '../utils/api';
-
-test('fetches user data successfully', async () => {
-  const userData = await fetchUserData(1);
-  expect(userData).toHaveProperty('name');
-});
-```
-
-## 🔧 Configuration
-
-### Jest Configuration
-```javascript
-module.exports = {
-  preset: 'ts-jest',
-  testEnvironment: 'jsdom',
-  setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
-  moduleNameMapper: {
-    '\\.(css|less|scss)$': 'identity-obj-proxy',
-  },
-  coverageThreshold: {
-    global: {
-      branches: 80,
-      functions: 80,
-      lines: 80,
-      statements: 80,
-    },
-  },
-};
-```
+  
 ---
 
+## 🧪 Comprehensive Jest Testing Guide  
 
-## 📝 Best Practices
+🔍 Looking for in-depth details on **testing strategies, best practices, and advanced configurations**?  
 
-1. **Arrange-Act-Assert Pattern**
-   - Organize tests in a clear, consistent structure
-   - Separate setup, execution, and verification steps
+📖 **[Read the Full Jest Testing Guide →](./TESTING.md)**  
 
-2. **Meaningful Test Names**
-   - Use descriptive test names that explain the scenario
-   - Follow the pattern: "should [expected behavior] when [condition]"
+Inside, you'll find:  
+✅ **Expanded examples** of component, async, and integration testing  
+✅ **Best practices** for structuring tests effectively  
+✅ **Mocking techniques** to handle dependencies like APIs and databases  
+✅ **Advanced Jest configurations** and troubleshooting tips  
 
-3. **Mock External Dependencies**
-   - Use Jest mocks for external services
-   - Keep tests isolated and deterministic
 
-4. **Test Coverage**
-   - Aim for comprehensive coverage
-   - Focus on critical business logic
-   - Don't just test for coverage numbers
 ---
 
 ## 🤝 Contributing
