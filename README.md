@@ -1,8 +1,14 @@
 # JestertheClown 🃏
-
-A comprehensive collection of React testing examples and best practices using Jest and TypeScript.
+### 🧪 Jest Testing Playground
+A comprehensive collection of React testing examples and best practices using Jest and TypeScript. React project to practice unit tests, integration tests, and API mocking using Jest & React Testing Library.
 
 ## 🚀 Features
+Focused on 
+- 🔹 **Unit Testing** – Test pure functions using Jest.
+- 🔹 **Component Testing** – Test React components with user interactions.
+- 🔹 **API Mocking** – Mock fetch calls for predictable testing.
+  
+Touches on
 
 - React component testing examples
 - TypeScript integration
