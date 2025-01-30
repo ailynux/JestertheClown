@@ -173,11 +173,11 @@ console.log(screen.debug());
 
 ## 📝 Best Practices
 
-✅ **Use Arrange-Act-Assert pattern** for clear test structure.
-✅ **Write meaningful test names** (e.g., `should update button text when clicked`).
-✅ **Mock external dependencies** to keep tests isolated.
-✅ **Use `findBy` over `waitFor`** where applicable.
-✅ **Focus on testing behavior, not implementation details.**
+- ✅ **Use Arrange-Act-Assert pattern** for clear test structure.
+- ✅ **Write meaningful test names** (e.g., `should update button text when clicked`).
+- ✅ **Mock external dependencies** to keep tests isolated.
+- ✅ **Use `findBy` over `waitFor`** where applicable.
+- ✅ **Focus on testing behavior, not implementation details.**
 
 ---
 
