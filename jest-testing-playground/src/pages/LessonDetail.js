@@ -23,7 +23,9 @@ import { motion } from "framer-motion";
 import lessons, { getLesson, getLessonIndex } from "../lessons/lessons";
 import { getLessonIcon } from "../lessons/lessonIcons";
 import { markCompleted, isCompleted } from "../lessons/progress";
+import quizzes from "../lessons/quizzes";
 import TestRunner from "../components/TestRunner";
+import Quiz from "../components/Quiz";
 
 const monoFont = '"JetBrains Mono", Menlo, Monaco, Consolas, monospace';
 
@@ -206,6 +208,7 @@ const LessonDetail = () => {
 
   const prev = index > 0 ? lessons[index - 1] : null;
   const next = index < lessons.length - 1 ? lessons[index + 1] : null;
+  const quiz = quizzes[slug];
   const LessonIcon = getLessonIcon(slug);
   const PrevIcon = prev ? getLessonIcon(prev.slug) : null;
   const NextIcon = next ? getLessonIcon(next.slug) : null;
@@ -289,6 +292,8 @@ const LessonDetail = () => {
             </Stack>
           </Paper>
         )}
+
+        {quiz && <Quiz questions={quiz} />}
 
         <Divider sx={{ my: 4, borderColor: "rgba(46,230,110,0.12)" }} />
 

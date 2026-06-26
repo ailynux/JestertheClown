@@ -99,3 +99,25 @@ a {
 .token.important {
   color: #ffb86c;
 }
+
+/* When printing the certificate, hide everything else and reset to paper. */
+@media print {
+  body {
+    background: #ffffff !important;
+  }
+  header,
+  footer,
+  nav {
+    display: none !important;
+  }
+  .certificate {
+    border: 2px solid #7c5cffaa !important;
+    background: #ffffff !important;
+    color: #1a1a1a !important;
+    box-shadow: none !important;
+  }
+  .certificate * {
+    color: #1a1a1a !important;
+    -webkit-text-fill-color: #1a1a1a !important;
+  }
+}

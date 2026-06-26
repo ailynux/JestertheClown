@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import {
   Container,
   Typography,
@@ -8,6 +8,8 @@ import {
   Box,
   Grid,
   Chip,
+  Tooltip,
+  Snackbar,
   Accordion,
   AccordionSummary,
   AccordionDetails,
@@ -16,7 +18,43 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import TerminalIcon from "@mui/icons-material/Terminal";
 import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import IosShareIcon from "@mui/icons-material/IosShare";
+import DeleteSweepOutlinedIcon from "@mui/icons-material/DeleteSweepOutlined";
 import TestRunner from "../components/TestRunner";
+import { clearSnapshots } from "../engine/jestEngine";
+
+const AUTOSAVE_KEY = "jest-carnival-playground-code";
+
+// Share links keep the code in the URL hash as base64 (unicode-safe).
+function encodeCode(code) {
+  try {
+    return btoa(unescape(encodeURIComponent(code)));
+  } catch {
+    return "";
+  }
+}
+function decodeCode(str) {
+  try {
+    return decodeURIComponent(escape(atob(str)));
+  } catch {
+    return null;
+  }
+}
+function readInitialCode(fallback) {
+  const params = new URLSearchParams(window.location.search);
+  const shared = params.get("code");
+  if (shared) {
+    const decoded = decodeCode(shared);
+    if (decoded) return { code: decoded, source: "shared" };
+  }
+  try {
+    const saved = localStorage.getItem(AUTOSAVE_KEY);
+    if (saved) return { code: saved, source: "saved" };
+  } catch {
+    /* ignore */
+  }
+  return { code: fallback, source: "default" };
+}
 
 const monoFont = '"JetBrains Mono", Menlo, Monaco, Consolas, monospace';
 
@@ -435,6 +473,144 @@ describe("cartTotal", () => {
   });
 });`,
   },
+  // ---------------- Advanced ----------------
+  {
+    name: "Asymmetric matchers",
+    group: "Advanced",
+    code: `// Match SHAPE instead of exact values. Great when ids/timestamps vary.
+function createUser(name) {
+  return { id: Math.random(), name, roles: ["member"], createdAt: Date.now() };
+}
+
+describe("createUser", () => {
+  test("matches the shape, ignoring the random id", () => {
+    expect(createUser("Ada")).toEqual({
+      id: expect.any(Number),
+      name: "Ada",
+      roles: expect.arrayContaining(["member"]),
+      createdAt: expect.any(Number),
+    });
+  });
+
+  test("objectContaining checks a subset", () => {
+    expect(createUser("Grace")).toEqual(
+      expect.objectContaining({ name: "Grace" })
+    );
+  });
+});`,
+  },
+  {
+    name: "Fake timers",
+    group: "Advanced",
+    code: `// Test time-based code WITHOUT actually waiting. Control the clock yourself.
+function debounce(fn, wait) {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), wait);
+  };
+}
+
+describe("debounce", () => {
+  test("only fires once after the wait", () => {
+    jest.useFakeTimers();
+    const spy = jest.fn();
+    const debounced = debounce(spy, 200);
+
+    debounced();
+    debounced();
+    debounced();
+
+    expect(spy).not.toHaveBeenCalled();   // nothing yet
+    jest.advanceTimersByTime(200);        // fast-forward 200ms
+    expect(spy).toHaveBeenCalledTimes(1); // fired exactly once
+
+    jest.useRealTimers();
+  });
+});`,
+  },
+  {
+    name: "Snapshots",
+    group: "Advanced",
+    code: `// Run once: the snapshot is recorded + the test passes.
+// Change the output and run again: the snapshot test FAILS until you accept it.
+// (Use the "Snapshots" button below to clear stored snapshots.)
+function renderBadge(label, count) {
+  return { type: "badge", label, count, classes: ["pill", count > 0 ? "active" : "muted"] };
+}
+
+describe("renderBadge", () => {
+  test("matches the stored snapshot", () => {
+    expect(renderBadge("Tests", 3)).toMatchSnapshot();
+  });
+});`,
+  },
+  // ---------------- Modules ----------------
+  {
+    name: "Real vs mocked module",
+    group: "Modules",
+    code: `// require() pulls in a demo module. Without jest.mock, you get the REAL one.
+const { greet } = require("./greeter");
+
+function welcome(name) {
+  return greet(name);
+}
+
+describe("welcome (real module)", () => {
+  test("uses the real greeter", () => {
+    expect(welcome("Ada")).toBe("Hello, Ada!");
+  });
+});`,
+  },
+  {
+    name: "jest.mock a dependency",
+    group: "Modules",
+    code: `// jest.mock replaces a module with a fake. (Declare it before require.)
+jest.mock("./greeter", () => ({
+  greet: jest.fn(() => "MOCKED"),
+}));
+
+const { greet } = require("./greeter");
+
+function welcome(name) {
+  return greet(name);
+}
+
+describe("welcome (mocked module)", () => {
+  test("uses the mock, not the real greeter", () => {
+    expect(welcome("Ada")).toBe("MOCKED");
+  });
+  test("and we can assert how it was called", () => {
+    welcome("Grace");
+    expect(greet).toHaveBeenCalledWith("Grace");
+  });
+});`,
+  },
+  {
+    name: "Mock an async API module",
+    group: "Modules",
+    code: `// Mock a network module so tests are fast and deterministic.
+jest.mock("./api", () => ({
+  fetchUser: jest.fn().mockResolvedValue({ id: 1, name: "Mocky" }),
+}));
+
+const { fetchUser } = require("./api");
+
+async function getUserName(id) {
+  const user = await fetchUser(id);
+  return user.name;
+}
+
+describe("getUserName", () => {
+  test("returns the mocked user's name", async () => {
+    await expect(getUserName(1)).resolves.toBe("Mocky");
+  });
+  test("calls the API with the right id", async () => {
+    await getUserName(42);
+    expect(fetchUser).toHaveBeenCalledWith(42);
+  });
+});`,
+  },
 ];
 
 const groups = [
@@ -445,6 +621,8 @@ const groups = [
   "Mocks",
   "Structure",
   "Real-world",
+  "Advanced",
+  "Modules",
 ];
 
 // Cheat sheet, grouped so it reads as a tidy reference instead of one long list.
@@ -521,6 +699,35 @@ const cheatGroups = [
       ["test.each(t)(...)", "table-driven tests"],
     ],
   },
+  {
+    title: "Asymmetric & misc",
+    items: [
+      ["expect.any(C)", "value of a type"],
+      ["expect.objectContaining(o)", "object has subset"],
+      ["expect.arrayContaining(a)", "array has items"],
+      ["toBeInstanceOf(C)", "instanceof check"],
+      ["toBeNaN()", "value is NaN"],
+      ["toMatchSnapshot()", "record / compare"],
+    ],
+  },
+  {
+    title: "Fake timers",
+    items: [
+      ["jest.useFakeTimers()", "control the clock"],
+      ["jest.advanceTimersByTime(n)", "tick n ms forward"],
+      ["jest.runAllTimers()", "flush every timer"],
+      ["jest.useRealTimers()", "restore real time"],
+    ],
+  },
+  {
+    title: "Modules",
+    items: [
+      ["require('./x')", "import a demo module"],
+      ["jest.mock('./x', fn)", "replace with a fake"],
+      ["jest.requireActual('./x')", "get the real one"],
+      ["jest.unmock('./x')", "undo a mock"],
+    ],
+  },
 ];
 
 const presetColors = {
@@ -531,20 +738,59 @@ const presetColors = {
   Mocks: "#ffb84c",
   Structure: "#f472b6",
   "Real-world": "#4ade80",
+  Advanced: "#c4b5fd",
+  Modules: "#f0abfc",
 };
 
 const Playground = () => {
-  const [code, setCode] = useState(presets[0].code);
-  const [activePreset, setActivePreset] = useState("Blank");
+  const initial = useRef(readInitialCode(presets[0].code)).current;
+  const [code, setCode] = useState(initial.code);
+  const [activePreset, setActivePreset] = useState(
+    initial.source === "shared" ? "Shared link" : initial.source === "saved" ? "Your session" : "Blank"
+  );
   const [runnerKey, setRunnerKey] = useState(0);
+  const [snack, setSnack] = useState(null);
+  const liveCode = useRef(initial.code);
+
+  const persist = (next) => {
+    try {
+      localStorage.setItem(AUTOSAVE_KEY, next);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const handleCodeChange = useCallback((next) => {
+    liveCode.current = next;
+    persist(next);
+  }, []);
 
   const loadPreset = (preset) => {
     setCode(preset.code);
+    liveCode.current = preset.code;
+    persist(preset.code);
     setActivePreset(preset.name);
     setRunnerKey((k) => k + 1);
   };
 
-  const active = presets.find((p) => p.name === activePreset) || presets[0];
+  const handleShare = async () => {
+    const url = `${window.location.origin}${window.location.pathname}?code=${encodeCode(liveCode.current)}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      window.history.replaceState(null, "", url);
+      setSnack("Share link copied to your clipboard.");
+    } catch {
+      setSnack("Couldn't copy automatically — grab the URL from your address bar.");
+    }
+  };
+
+  const handleClearSnapshots = () => {
+    clearSnapshots();
+    setSnack("Stored snapshots cleared — toMatchSnapshot() will re-record.");
+  };
+
+  const active =
+    presets.find((p) => p.name === activePreset) || { name: activePreset, group: "Custom" };
 
   return (
     <Container maxWidth="lg" sx={{ py: 6 }}>
@@ -567,8 +813,26 @@ const Playground = () => {
       <Typography sx={{ color: "text.secondary", mb: 3, maxWidth: 720 }}>
         A real Jest-style runner, right in your browser. Pick a scenario below to load
         a working example, tweak it, and hit <strong>Run</strong> (or{" "}
-        <Box component="kbd" sx={{ fontFamily: monoFont, fontSize: 12, px: 0.6, py: 0.2, border: "1px solid rgba(255,255,255,0.15)", borderRadius: 1 }}>⌘/Ctrl + ↵</Box>).
+        <Box component="kbd" sx={{ fontFamily: monoFont, fontSize: 12, px: 0.6, py: 0.2, border: "1px solid rgba(255,255,255,0.15)", borderRadius: 1 }}>⌘/Ctrl + ↵</Box>). Your
+        code auto-saves and survives refreshes.
       </Typography>
+
+      {initial.source !== "default" && (
+        <Chip
+          size="small"
+          label={
+            initial.source === "shared"
+              ? "Loaded from a shared link"
+              : "Restored your last session"
+          }
+          sx={{
+            mb: 2,
+            backgroundColor: "rgba(46,230,110,0.12)",
+            color: "#5ef08f",
+            fontWeight: 600,
+          }}
+        />
+      )}
 
       {/* Scenario picker */}
       <Paper sx={{ p: { xs: 2, md: 2.5 }, mb: 3, border: "1px solid rgba(255,255,255,0.08)" }}>
@@ -669,7 +933,38 @@ const Playground = () => {
           </Box>
         </Stack>
         <Box sx={{ p: { xs: 2, md: 3 } }}>
-          <TestRunner key={runnerKey} initialCode={code} minRows={16} />
+          <TestRunner
+            key={runnerKey}
+            initialCode={code}
+            minRows={16}
+            onCodeChange={handleCodeChange}
+            extraActions={
+              <>
+                <Tooltip title="Copy a shareable link to this code">
+                  <Button
+                    variant="outlined"
+                    color="inherit"
+                    startIcon={<IosShareIcon />}
+                    onClick={handleShare}
+                    sx={{ borderColor: "rgba(46,230,110,0.4)", color: "#5ef08f" }}
+                  >
+                    Share
+                  </Button>
+                </Tooltip>
+                <Tooltip title="Clear stored snapshots for toMatchSnapshot()">
+                  <Button
+                    variant="text"
+                    color="inherit"
+                    startIcon={<DeleteSweepOutlinedIcon />}
+                    onClick={handleClearSnapshots}
+                    sx={{ color: "rgba(232,245,238,0.5)" }}
+                  >
+                    Snapshots
+                  </Button>
+                </Tooltip>
+              </>
+            }
+          />
         </Box>
       </Paper>
 
@@ -759,19 +1054,34 @@ const Playground = () => {
           <Typography sx={{ color: "text.secondary", lineHeight: 1.7, mb: 2 }}>
             This playground runs a browser-native re-implementation of Jest's core
             API — <Code>describe</Code>, <Code>test</Code> / <Code>test.each</Code>,{" "}
-            <Code>expect</Code> with 20+ matchers, the lifecycle hooks,{" "}
-            <Code>jest.fn()</Code>, <Code>jest.spyOn()</Code>, and async{" "}
-            <Code>.resolves</Code> / <Code>.rejects</Code>. The API matches real Jest,
-            so what you learn here transfers directly. In a real project you'd run
+            <Code>expect</Code> with 25+ matchers, asymmetric matchers like{" "}
+            <Code>expect.any()</Code>, the lifecycle hooks, <Code>jest.fn()</Code>,{" "}
+            <Code>jest.spyOn()</Code>, fake timers (<Code>jest.useFakeTimers()</Code>),
+            working <Code>toMatchSnapshot()</Code>, module mocking via{" "}
+            <Code>jest.mock()</Code> + <Code>require()</Code>, a live <Code>console</Code>,
+            and async <Code>.resolves</Code> / <Code>.rejects</Code>. The API matches real
+            Jest, so what you learn here transfers directly. In a real project you'd run
             these from your terminal with <Code>npm test</Code>.
           </Typography>
+          <Typography sx={{ color: "text.secondary", fontSize: 13.5, mb: 2 }}>
+            Demo modules you can <Code>require</Code> or <Code>jest.mock</Code>:{" "}
+            <Code>./greeter</Code>, <Code>./api</Code>, <Code>./mathlib</Code>, <Code>./logger</Code>.
+          </Typography>
           <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
-            {["describe", "test", "test.each", "expect", "jest.fn", "jest.spyOn", ".resolves", ".rejects", "beforeEach"].map((t) => (
+            {["describe", "test.each", "expect.any", "jest.fn", "jest.spyOn", "jest.mock", "useFakeTimers", "toMatchSnapshot", ".resolves", ".rejects"].map((t) => (
               <Chip key={t} size="small" label={t} sx={{ fontFamily: monoFont, fontSize: 11, backgroundColor: "rgba(46,230,110,0.1)", color: "#5ef08f" }} />
             ))}
           </Stack>
         </AccordionDetails>
       </Accordion>
+
+      <Snackbar
+        open={Boolean(snack)}
+        autoHideDuration={3000}
+        onClose={() => setSnack(null)}
+        message={snack}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      />
     </Container>
   );
 };

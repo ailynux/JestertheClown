@@ -5,7 +5,10 @@ import { motion } from "framer-motion";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import SchoolRoundedIcon from "@mui/icons-material/SchoolRounded";
 import TerminalRoundedIcon from "@mui/icons-material/TerminalRounded";
+import EmojiEventsRoundedIcon from "@mui/icons-material/EmojiEventsRounded";
+import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
 import RocketLaunchRoundedIcon from "@mui/icons-material/RocketLaunchRounded";
+import HelpOutlineRoundedIcon from "@mui/icons-material/HelpOutlineRounded";
 import GitHubIcon from "@mui/icons-material/GitHub";
 import lessons from "../lessons/lessons";
 import { getCompleted } from "../lessons/progress";
@@ -13,16 +16,22 @@ import { getCompleted } from "../lessons/progress";
 const links = [
   { to: "/", label: "Home", icon: HomeRoundedIcon },
   { to: "/learn", label: "Learn", icon: SchoolRoundedIcon },
+  { to: "/challenges", label: "Challenges", icon: EmojiEventsRoundedIcon },
   { to: "/playground", label: "Playground", icon: TerminalRoundedIcon },
+  { to: "/dashboard", label: "Dashboard", icon: InsightsRoundedIcon },
 ];
+
+const lessonSlugSet = new Set(lessons.map((l) => l.slug));
+const countLessons = () =>
+  Object.keys(getCompleted()).filter((k) => lessonSlugSet.has(k)).length;
 
 const Navbar = () => {
   const location = useLocation();
   const total = lessons.length;
-  const [done, setDone] = useState(() => Object.keys(getCompleted()).length);
+  const [done, setDone] = useState(countLessons);
 
   useEffect(() => {
-    const update = () => setDone(Object.keys(getCompleted()).length);
+    const update = () => setDone(countLessons());
     update();
     window.addEventListener("jest-academy-progress", update);
     window.addEventListener("storage", update);
@@ -161,10 +170,10 @@ const Navbar = () => {
             );
           })}
 
-          <Tooltip title={`${done}/${total} lessons complete`} arrow>
+          <Tooltip title={`${done}/${total} lessons complete · view dashboard`} arrow>
             <Box
               component={Link}
-              to="/learn"
+              to="/dashboard"
               sx={{
                 display: { xs: "none", md: "flex" },
                 alignItems: "center",
@@ -204,6 +213,29 @@ const Navbar = () => {
               >
                 {pct}%
               </Typography>
+            </Box>
+          </Tooltip>
+
+          <Tooltip title="Take the tour" arrow>
+            <Box
+              component="button"
+              onClick={() => window.dispatchEvent(new Event("open-tour"))}
+              sx={{
+                display: { xs: "none", sm: "flex" },
+                alignItems: "center",
+                justifyContent: "center",
+                color: "rgba(232,245,238,0.6)",
+                ml: 0.3,
+                p: 0.8,
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+                borderRadius: "50%",
+                transition: "color 0.2s, background 0.2s",
+                "&:hover": { color: "#2ee66e", background: "rgba(255,255,255,0.05)" },
+              }}
+            >
+              <HelpOutlineRoundedIcon sx={{ fontSize: 21 }} />
             </Box>
           </Tooltip>
 

@@ -1694,7 +1694,51 @@ jobs:
         type: "warning",
         text: "The #1 snapshot anti-pattern: blindly running `--updateSnapshot` every time a test fails. That defeats the entire point — you're just re-photographing whatever the code does now, bug and all.",
       },
+      {
+        type: "heading",
+        text: "Try it live",
+      },
+      {
+        type: "paragraph",
+        text: "The runner below really supports `toMatchSnapshot()`. The **first run records** the snapshot and passes. Now change the output — edit a label or a number in `renderBadge` — and run again: the snapshot **fails with a diff**, exactly like real Jest. That's the safety net working.",
+      },
+      {
+        type: "tip",
+        text: "To re-record after an intentional change (the equivalent of `--updateSnapshot`), use the **Snapshots** button in the Playground to clear stored snapshots, then run again.",
+      },
     ],
+    exercise: {
+      instructions:
+        "Run this once to record the snapshot (it passes). Then change `\"Tests\"` to `\"Builds\"` or the count, and run again — watch the snapshot test fail and show you exactly what changed.",
+      starterCode: `function renderBadge(label, count) {
+  return {
+    type: "badge",
+    label,
+    count,
+    state: count > 0 ? "active" : "muted",
+  };
+}
+
+describe("renderBadge", () => {
+  test("matches the stored snapshot", () => {
+    expect(renderBadge("Tests", 3)).toMatchSnapshot();
+  });
+});`,
+    },
+    solution: `function renderBadge(label, count) {
+  return {
+    type: "badge",
+    label,
+    count,
+    state: count > 0 ? "active" : "muted",
+  };
+}
+
+describe("renderBadge", () => {
+  test("matches the stored snapshot", () => {
+    expect(renderBadge("Tests", 3)).toMatchSnapshot();
+  });
+});`,
     recap: [
       "Snapshots save output to a file and compare future runs against it.",
       "Commit `.snap` files; update them deliberately with `--updateSnapshot` only when the change is intended.",

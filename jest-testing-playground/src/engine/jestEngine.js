@@ -12,6 +12,11 @@ function isObject(value) {
 }
 
 export function deepEqual(a, b) {
+  // Asymmetric matchers (expect.any, expect.objectContaining, ...) can appear on
+  // either side; let them decide the match against the concrete value.
+  if (b && b._isAsymmetric) return b.asymmetricMatch(a);
+  if (a && a._isAsymmetric) return a.asymmetricMatch(b);
+
   if (Object.is(a, b)) return true;
   if (!isObject(a) || !isObject(b)) return false;
   if (a.constructor !== b.constructor) return false;
@@ -49,16 +54,66 @@ function matchObject(received, expected) {
     return deepEqual(received, expected);
   }
   return Object.keys(expected).every((key) => {
-    if (isObject(expected[key]) && isObject(received[key])) {
-      return matchObject(received[key], expected[key]);
+    const e = expected[key];
+    if (e && e._isAsymmetric) return e.asymmetricMatch(received[key]);
+    if (isObject(e) && isObject(received[key])) {
+      return matchObject(received[key], e);
     }
-    return deepEqual(received[key], expected[key]);
+    return deepEqual(received[key], e);
   });
 }
+
+/* ----------------------- asymmetric matchers ----------------------- */
+
+function makeAsymmetric(asymmetricMatch, toStr) {
+  return { _isAsymmetric: true, asymmetricMatch, toString: () => toStr, label: toStr };
+}
+
+function matchesType(constructor, actual) {
+  if (constructor === Number) return typeof actual === "number" || actual instanceof Number;
+  if (constructor === String) return typeof actual === "string" || actual instanceof String;
+  if (constructor === Boolean) return typeof actual === "boolean";
+  if (constructor && constructor.name === "BigInt") return typeof actual === "bigint";
+  if (constructor === Function) return typeof actual === "function";
+  if (constructor === Symbol) return typeof actual === "symbol";
+  if (constructor === Object) return actual !== null && typeof actual === "object";
+  if (constructor === Array) return Array.isArray(actual);
+  return actual != null && actual instanceof constructor;
+}
+
+const asymmetricMatchers = {
+  any: (constructor) =>
+    makeAsymmetric(
+      (actual) => matchesType(constructor, actual),
+      `Any<${(constructor && constructor.name) || "?"}>`
+    ),
+  anything: () =>
+    makeAsymmetric((actual) => actual !== null && actual !== undefined, "Anything"),
+  arrayContaining: (sample) =>
+    makeAsymmetric(
+      (actual) =>
+        Array.isArray(actual) &&
+        sample.every((s) => actual.some((a) => deepEqual(a, s))),
+      `ArrayContaining ${pretty(sample)}`
+    ),
+  objectContaining: (sample) =>
+    makeAsymmetric((actual) => matchObject(actual, sample), `ObjectContaining ${pretty(sample)}`),
+  stringContaining: (sub) =>
+    makeAsymmetric(
+      (actual) => typeof actual === "string" && actual.includes(sub),
+      `StringContaining ${pretty(sub)}`
+    ),
+  stringMatching: (re) =>
+    makeAsymmetric(
+      (actual) => typeof actual === "string" && (re instanceof RegExp ? re.test(actual) : actual.includes(re)),
+      `StringMatching ${pretty(re)}`
+    ),
+};
 
 /* ----------------------------- printing ----------------------------- */
 
 export function pretty(value) {
+  if (value && value._isAsymmetric) return value.label;
   if (typeof value === "string") return JSON.stringify(value);
   if (typeof value === "function") {
     return value._isMockFn ? "[Function: mockFn]" : `[Function: ${value.name || "anonymous"}]`;
@@ -136,6 +191,43 @@ function createMockFn(implementation) {
   return mockFn;
 }
 
+/* --------------------------- fake modules --------------------------- */
+
+// Built-in "modules" learners can require() and mock, so module-mocking can be
+// taught without a real bundler. Each factory returns a fresh copy of exports.
+const defaultModules = {
+  "./greeter": () => ({
+    greet: (name) => `Hello, ${name}!`,
+    shout: (name) => `HEY ${String(name).toUpperCase()}!!!`,
+  }),
+  "./api": () => ({
+    fetchUser: (id) => Promise.resolve({ id, name: "Ada Lovelace" }),
+    fetchUsers: () =>
+      Promise.resolve([
+        { id: 1, name: "Ada" },
+        { id: 2, name: "Grace" },
+      ]),
+  }),
+  "./mathlib": () => ({
+    add: (a, b) => a + b,
+    subtract: (a, b) => a - b,
+    double: (n) => n * 2,
+  }),
+  "./logger": () => ({
+    log: () => {},
+    warn: () => {},
+  }),
+};
+
+// Auto-mock: every function export becomes a jest.fn() returning undefined.
+function autoMock(realExports) {
+  const mocked = {};
+  for (const key of Object.keys(realExports)) {
+    mocked[key] = typeof realExports[key] === "function" ? createMockFn() : realExports[key];
+  }
+  return mocked;
+}
+
 const jestApi = {
   fn: (impl) => createMockFn(impl),
   // Replace obj[method] with a mock that still calls the original by default.
@@ -165,6 +257,9 @@ class AssertionError extends Error {
     this.name = "AssertionError";
   }
 }
+
+// Set by the runner before each test so toMatchSnapshot() knows where it is.
+let snapshotCtx = null;
 
 function buildMatchers(received, isNot) {
   const pass = (condition, message) => {
@@ -303,6 +398,30 @@ function buildMatchers(received, isNot) {
         received.mock.calls.some((call) => deepEqual(call, args));
       pass(ok, () => `expect(mockFn).${label}toHaveBeenCalledWith(${args.map(pretty).join(", ")})\n\nActual calls: ${received && received._isMockFn ? pretty(received.mock.calls) : "received is not a mock function"}`);
     },
+    toBeInstanceOf(constructor) {
+      const ok = typeof constructor === "function" && received instanceof constructor;
+      pass(ok, () => `expect(received).${label}toBeInstanceOf(${(constructor && constructor.name) || pretty(constructor)})\n\nReceived: ${pretty(received)}`);
+    },
+    toMatchSnapshot() {
+      const serialized = pretty(received);
+      // No snapshot store wired up (e.g. used outside the runner) — just pass.
+      if (!snapshotCtx) return;
+      const idx = (snapshotCtx.counts[snapshotCtx.testKey] =
+        (snapshotCtx.counts[snapshotCtx.testKey] || 0) + 1);
+      const key = `${snapshotCtx.testKey} ${idx}`;
+
+      if (!(key in snapshotCtx.store)) {
+        snapshotCtx.store[key] = serialized;
+        snapshotCtx.written.push(key);
+        return; // first run: record + pass
+      }
+      const prev = snapshotCtx.store[key];
+      pass(
+        prev === serialized,
+        () =>
+          `expect(received).${label}toMatchSnapshot()\n\nSnapshot name: ${key}\n\n- Snapshot\n+ Received\n\n- ${prev}\n+ ${serialized}`
+      );
+    },
   };
 }
 
@@ -354,6 +473,114 @@ function expect(received) {
   return matchers;
 }
 
+// Asymmetric matchers live on expect itself: expect.any(String), etc.
+expect.any = asymmetricMatchers.any;
+expect.anything = asymmetricMatchers.anything;
+expect.arrayContaining = asymmetricMatchers.arrayContaining;
+expect.objectContaining = asymmetricMatchers.objectContaining;
+expect.stringContaining = asymmetricMatchers.stringContaining;
+expect.stringMatching = asymmetricMatchers.stringMatching;
+
+/* ---------------------------- fake timers ---------------------------- */
+
+// A minimal, deterministic timer system. When fake timers are on, the user's
+// setTimeout/setInterval calls are queued instead of really scheduled, and the
+// learner advances "time" manually with jest.advanceTimersByTime / runAllTimers.
+function createTimerManager() {
+  let fake = null; // { queue, now, nextId }
+
+  const enabled = () => fake !== null;
+
+  const drainUntil = (targetTime) => {
+    let guard = 0;
+    while (true) {
+      const due = fake.queue
+        .filter((t) => t.time <= targetTime)
+        .sort((a, b) => a.time - b.time);
+      if (due.length === 0) break;
+      const timer = due[0];
+      fake.now = timer.time;
+      if (timer.type === "interval") {
+        timer.time += timer.delay; // reschedule before running
+      } else {
+        fake.queue = fake.queue.filter((t) => t.id !== timer.id);
+      }
+      timer.fn(...timer.args);
+      if (++guard > 10000) throw new Error("Too many timer callbacks (possible infinite loop)");
+    }
+    fake.now = targetTime;
+  };
+
+  return {
+    useFake: () => { fake = { queue: [], now: 0, nextId: 1 }; },
+    useReal: () => { fake = null; },
+    clearAll: () => { if (fake) fake.queue = []; },
+    setTimeout: (fn, delay = 0, ...args) => {
+      if (!enabled()) return setTimeout(fn, delay, ...args);
+      const id = fake.nextId++;
+      fake.queue.push({ id, fn, args, time: fake.now + delay, type: "timeout" });
+      return id;
+    },
+    setInterval: (fn, delay = 0, ...args) => {
+      if (!enabled()) return setInterval(fn, delay, ...args);
+      const id = fake.nextId++;
+      fake.queue.push({ id, fn, args, time: fake.now + delay, delay, type: "interval" });
+      return id;
+    },
+    clearTimeout: (id) => {
+      if (!enabled()) return clearTimeout(id);
+      fake.queue = fake.queue.filter((t) => t.id !== id);
+    },
+    clearInterval: (id) => {
+      if (!enabled()) return clearInterval(id);
+      fake.queue = fake.queue.filter((t) => t.id !== id);
+    },
+    advanceBy: (ms) => { if (enabled()) drainUntil(fake.now + ms); },
+    runAll: () => {
+      if (!enabled()) return;
+      let guard = 0;
+      while (fake.queue.length) {
+        const max = Math.max(...fake.queue.map((t) => t.time));
+        drainUntil(max);
+        if (++guard > 1000) break;
+      }
+    },
+    runOnlyPending: () => {
+      if (!enabled()) return;
+      const max = fake.queue.length ? Math.max(...fake.queue.map((t) => t.time)) : fake.now;
+      drainUntil(max);
+    },
+  };
+}
+
+/* --------------------------- snapshot store -------------------------- */
+
+const SNAPSHOT_KEY = "jest-carnival-snapshots";
+
+function loadSnapshots() {
+  try {
+    return JSON.parse(localStorage.getItem(SNAPSHOT_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function saveSnapshots(store) {
+  try {
+    localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(store));
+  } catch {
+    /* ignore quota / unavailable storage */
+  }
+}
+
+export function clearSnapshots() {
+  try {
+    localStorage.removeItem(SNAPSHOT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 /* ------------------------------ runner ------------------------------- */
 
 function makeSuite(name, parent) {
@@ -374,6 +601,49 @@ export async function runTests(code) {
   const root = makeSuite(null, null);
   let current = root;
   const logs = [];
+
+  const timers = createTimerManager();
+
+  // Snapshot store is persisted across runs so re-running can detect changes.
+  const snapStore = loadSnapshots();
+  const snap = { store: snapStore, counts: {}, written: [], testKey: "" };
+
+  // Per-run module registry for require() + jest.mock().
+  const moduleMocks = {};
+  const resolveModule = (path) => {
+    if (path in moduleMocks) return moduleMocks[path];
+    if (path in defaultModules) return defaultModules[path]();
+    throw new Error(
+      `Cannot find module '${path}'. Available demo modules: ${Object.keys(defaultModules).join(", ")}`
+    );
+  };
+  const requireActual = (path) => {
+    if (path in defaultModules) return defaultModules[path]();
+    throw new Error(`Cannot find module '${path}'`);
+  };
+
+  const jest = {
+    ...jestApi,
+    useFakeTimers: () => timers.useFake(),
+    useRealTimers: () => timers.useReal(),
+    clearAllTimers: () => timers.clearAll(),
+    advanceTimersByTime: (ms) => timers.advanceBy(ms),
+    runAllTimers: () => timers.runAll(),
+    runOnlyPendingTimers: () => timers.runOnlyPending(),
+    mock: (path, factory) => {
+      if (factory) {
+        moduleMocks[path] = factory();
+      } else if (path in defaultModules) {
+        moduleMocks[path] = autoMock(defaultModules[path]());
+      } else {
+        moduleMocks[path] = {};
+      }
+    },
+    unmock: (path) => {
+      delete moduleMocks[path];
+    },
+    requireActual,
+  };
 
   const describe = (name, fn) => {
     const suite = makeSuite(name, current);
@@ -412,20 +682,33 @@ export async function runTests(code) {
   };
   test.each = makeEach();
 
+  const logLine = (level) => (...args) =>
+    logs.push({
+      level,
+      text: args.map((a) => (typeof a === "string" ? a : pretty(a))).join(" "),
+    });
+
   const api = {
     describe,
     test,
     it: test,
     expect,
-    jest: jestApi,
+    jest,
     beforeEach: (fn) => current.beforeEach.push(fn),
     afterEach: (fn) => current.afterEach.push(fn),
     beforeAll: (fn) => current.beforeAll.push(fn),
     afterAll: (fn) => current.afterAll.push(fn),
+    require: resolveModule,
+    setTimeout: timers.setTimeout,
+    clearTimeout: timers.clearTimeout,
+    setInterval: timers.setInterval,
+    clearInterval: timers.clearInterval,
     console: {
-      log: (...args) => logs.push(args.map((a) => (typeof a === "string" ? a : pretty(a))).join(" ")),
-      error: (...args) => logs.push(args.map((a) => (typeof a === "string" ? a : pretty(a))).join(" ")),
-      warn: (...args) => logs.push(args.map((a) => (typeof a === "string" ? a : pretty(a))).join(" ")),
+      log: logLine("log"),
+      info: logLine("info"),
+      error: logLine("error"),
+      warn: logLine("warn"),
+      debug: logLine("log"),
     },
   };
 
@@ -446,6 +729,7 @@ export async function runTests(code) {
 
   // Phase 2: walk the tree and actually run each test with its hooks.
   const results = [];
+  snapshotCtx = snap;
 
   const ancestorHooks = (suite, key) => {
     const chain = [];
@@ -463,6 +747,7 @@ export async function runTests(code) {
     for (const t of suite.tests) {
       const beforeEachHooks = ancestorHooks(suite, "beforeEach");
       const afterEachHooks = ancestorHooks(suite, "afterEach").reverse();
+      snap.testKey = [...namePath, t.name].join(" > ");
       const start = performance.now();
       try {
         for (const hook of beforeEachHooks) await hook();
@@ -492,14 +777,26 @@ export async function runTests(code) {
     for (const hook of suite.afterAll) await hook();
   };
 
+  let runError = null;
   try {
     await runSuite(root, []);
   } catch (error) {
+    runError = error;
+  } finally {
+    saveSnapshots(snapStore);
+    snapshotCtx = null;
+    timers.useReal();
+  }
+
+  const snapshots = { written: snap.written.length };
+
+  if (runError) {
     return {
       ok: false,
-      compileError: `Error while running tests: ${error.message}`,
+      compileError: `Error while running tests: ${runError.message}`,
       results,
       logs,
+      snapshots,
       summary: {
         passed: results.filter((r) => r.status === "passed").length,
         failed: results.filter((r) => r.status === "failed").length,
@@ -516,6 +813,7 @@ export async function runTests(code) {
     compileError: null,
     results,
     logs,
+    snapshots,
     summary: { passed, failed, total: results.length },
   };
 }

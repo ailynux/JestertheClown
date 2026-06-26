@@ -65,8 +65,14 @@ const TestResults = ({ result }) => {
     );
   }
 
-  const { summary, results, logs } = result;
+  const { summary, results, logs, snapshots } = result;
   const allPassed = summary.failed === 0 && summary.total > 0;
+  const logLevelColor = {
+    log: "#a5b4fc",
+    info: "#7dd3fc",
+    warn: "#ffd166",
+    error: "#ff8da1",
+  };
 
   return (
     <Box>
@@ -94,6 +100,12 @@ const TestResults = ({ result }) => {
           variant="outlined"
           sx={{ color: "rgba(255,255,255,0.6)", borderColor: "rgba(255,255,255,0.2)" }}
         />
+        {snapshots && snapshots.written > 0 && (
+          <Chip
+            label={`${snapshots.written} snapshot${snapshots.written > 1 ? "s" : ""} written`}
+            sx={{ backgroundColor: "rgba(167,139,250,0.15)", color: "#c4b5fd", fontWeight: 700 }}
+          />
+        )}
         {allPassed && (
           <motion.div
             initial={{ scale: 0, rotate: -30 }}
@@ -177,17 +189,36 @@ const TestResults = ({ result }) => {
           }}
         >
           <Typography sx={{ fontSize: 11, color: "rgba(255,255,255,0.4)", mb: 0.5, letterSpacing: 1 }}>
-            CONSOLE
+            CONSOLE · {logs.length}
           </Typography>
-          {logs.map((line, i) => (
-            <Box
-              key={i}
-              component="pre"
-              sx={{ m: 0, fontFamily: monoFont, fontSize: 12.5, color: "#a5b4fc", whiteSpace: "pre-wrap" }}
-            >
-              {line}
-            </Box>
-          ))}
+          {logs.map((line, i) => {
+            const level = typeof line === "string" ? "log" : line.level;
+            const text = typeof line === "string" ? line : line.text;
+            return (
+              <Stack key={i} direction="row" spacing={1} alignItems="flex-start" sx={{ py: 0.1 }}>
+                <Box
+                  component="span"
+                  sx={{
+                    fontFamily: monoFont,
+                    fontSize: 10,
+                    lineHeight: "20px",
+                    color: logLevelColor[level] || "#a5b4fc",
+                    opacity: 0.6,
+                    minWidth: 38,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {level}
+                </Box>
+                <Box
+                  component="pre"
+                  sx={{ m: 0, fontFamily: monoFont, fontSize: 12.5, color: logLevelColor[level] || "#a5b4fc", whiteSpace: "pre-wrap", flex: 1 }}
+                >
+                  {text}
+                </Box>
+              </Stack>
+            );
+          })}
         </Box>
       )}
     </Box>

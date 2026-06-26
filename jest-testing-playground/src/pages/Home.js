@@ -1,13 +1,193 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Box, Container, Typography, Button, Stack, Grid, Paper, Chip, Divider } from "@mui/material";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import PsychologyIcon from "@mui/icons-material/Psychology";
 import BoltIcon from "@mui/icons-material/Bolt";
 import ScienceIcon from "@mui/icons-material/Science";
 import TestRunner from "../components/TestRunner";
 import lessons from "../lessons/lessons";
+import challenges from "../challenges/challenges";
 import { getLessonIcon } from "../lessons/lessonIcons";
+
+const monoFont = '"JetBrains Mono", Menlo, Monaco, Consolas, monospace';
+
+// Headline word that cycles through synonyms with a vertical flip.
+const ROTATING_WORDS = ["testing.", "fearless.", "confident.", "unstoppable.", "shipping."];
+const RotatingWord = () => {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setI((p) => (p + 1) % ROTATING_WORDS.length), 2200);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <Box component="span" sx={{ display: "inline-block", minWidth: 10 }}>
+      <AnimatePresence mode="wait">
+        <motion.span
+          key={i}
+          initial={{ y: "0.6em", opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: "-0.6em", opacity: 0 }}
+          transition={{ duration: 0.32 }}
+          style={{
+            display: "inline-block",
+            backgroundImage: "linear-gradient(90deg,#2ee66e,#2dd4bf 55%,#7dd3fc)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            textShadow: "0 0 32px rgba(46,230,110,0.35)",
+          }}
+        >
+          {ROTATING_WORDS[i]}
+        </motion.span>
+      </AnimatePresence>
+    </Box>
+  );
+};
+
+// Auto-playing fake terminal: types a test, then shows it pass, then loops.
+const TERMINAL_CODE = `test("adds numbers", () => {
+  expect(add(2, 2)).toBe(4);
+});`;
+const HeroTerminal = () => {
+  const [typed, setTyped] = useState("");
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    let i = 0;
+    let typeTimer;
+    let resetTimer;
+    const tick = () => {
+      if (i <= TERMINAL_CODE.length) {
+        setTyped(TERMINAL_CODE.slice(0, i));
+        i += 1;
+        typeTimer = setTimeout(tick, 34);
+      } else {
+        setDone(true);
+        resetTimer = setTimeout(() => {
+          setDone(false);
+          setTyped("");
+          i = 0;
+          tick();
+        }, 3400);
+      }
+    };
+    tick();
+    return () => {
+      clearTimeout(typeTimer);
+      clearTimeout(resetTimer);
+    };
+  }, []);
+
+  return (
+    <Paper
+      sx={{
+        textAlign: "left",
+        overflow: "hidden",
+        border: "1px solid rgba(46,230,110,0.25)",
+        boxShadow: "0 24px 70px rgba(0,0,0,0.5), 0 0 40px rgba(46,230,110,0.12)",
+        backdropFilter: "blur(4px)",
+      }}
+    >
+      <Stack
+        direction="row"
+        alignItems="center"
+        spacing={1}
+        sx={{ px: 2, py: 1.2, borderBottom: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.02)" }}
+      >
+        <Stack direction="row" spacing={0.7}>
+          {["#ff5f57", "#febc2e", "#28c840"].map((c) => (
+            <Box key={c} sx={{ width: 11, height: 11, borderRadius: "50%", backgroundColor: c }} />
+          ))}
+        </Stack>
+        <Typography sx={{ fontFamily: monoFont, fontSize: 12.5, color: "rgba(232,245,238,0.7)" }}>
+          carnival.test.js
+        </Typography>
+      </Stack>
+
+      <Box sx={{ p: 2, minHeight: 188, fontFamily: monoFont, fontSize: 13.5, lineHeight: 1.7 }}>
+        <Box component="pre" sx={{ m: 0, color: "#cdeedd", whiteSpace: "pre-wrap" }}>
+          {typed}
+          {!done && (
+            <Box
+              component="span"
+              sx={{
+                display: "inline-block",
+                width: 8,
+                height: 16,
+                ml: "1px",
+                verticalAlign: "text-bottom",
+                backgroundColor: "#2ee66e",
+                animation: "heroBlink 1s steps(2) infinite",
+                "@keyframes heroBlink": { "50%": { opacity: 0 } },
+              }}
+            />
+          )}
+        </Box>
+
+        <AnimatePresence>
+          {done && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              style={{ marginTop: 14 }}
+            >
+              <Box sx={{ fontFamily: monoFont, fontSize: 13 }}>
+                <Box component="span" sx={{ px: 0.8, py: 0.2, borderRadius: 0.8, backgroundColor: "#1f9d57", color: "#04150b", fontWeight: 700 }}>
+                  PASS
+                </Box>
+                <Box component="span" sx={{ color: "rgba(232,245,238,0.6)", ml: 1 }}>
+                  carnival.test.js
+                </Box>
+                <Box sx={{ color: "#5ef08f", mt: 1 }}>✓ adds numbers (1 ms)</Box>
+                <Box sx={{ color: "rgba(232,245,238,0.55)", mt: 1 }}>
+                  Tests: <Box component="span" sx={{ color: "#5ef08f" }}>1 passed</Box>, 1 total
+                </Box>
+              </Box>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </Box>
+    </Paper>
+  );
+};
+
+// A handful of slow-floating sparkles for the hero backdrop.
+const Sparkles = () => {
+  const dots = [
+    { top: "14%", left: "8%", size: 6, color: "#2ee66e", delay: 0 },
+    { top: "24%", left: "88%", size: 5, color: "#7dd3fc", delay: 0.6 },
+    { top: "62%", left: "12%", size: 4, color: "#2dd4bf", delay: 1.1 },
+    { top: "70%", left: "82%", size: 7, color: "#2ee66e", delay: 0.3 },
+    { top: "40%", left: "50%", size: 4, color: "#7dd3fc", delay: 1.5 },
+    { top: "10%", left: "60%", size: 5, color: "#2dd4bf", delay: 0.9 },
+  ];
+  return (
+    <>
+      {dots.map((d, i) => (
+        <motion.div
+          key={i}
+          initial={{ opacity: 0.2, y: 0 }}
+          animate={{ opacity: [0.2, 0.9, 0.2], y: [0, -14, 0] }}
+          transition={{ repeat: Infinity, duration: 4 + i, delay: d.delay, ease: "easeInOut" }}
+          style={{
+            position: "absolute",
+            top: d.top,
+            left: d.left,
+            width: d.size,
+            height: d.size,
+            borderRadius: "50%",
+            background: d.color,
+            boxShadow: `0 0 12px ${d.color}`,
+            pointerEvents: "none",
+            zIndex: 0,
+          }}
+        />
+      ))}
+    </>
+  );
+};
 
 // Small uppercase eyebrow label used above each section heading.
 const Eyebrow = ({ children }) => (
@@ -27,9 +207,16 @@ const Eyebrow = ({ children }) => (
 
 const stats = [
   { value: `${lessons.length}`, label: "guided lessons" },
-  { value: "24", label: "playground scenarios" },
+  { value: `${challenges.length}`, label: "code challenges" },
   { value: "100%", label: "runs in your browser" },
   { value: "0", label: "setup required" },
+];
+
+const trustPills = [
+  "⚡ In-browser Jest engine",
+  `📚 ${lessons.length} lessons`,
+  `🏆 ${challenges.length} challenges`,
+  "🚀 Zero setup",
 ];
 
 const features = [
@@ -71,126 +258,156 @@ const Home = () => {
             "radial-gradient(1100px 520px at 50% -8%, rgba(46,230,110,0.16), transparent), radial-gradient(800px 420px at 85% 10%, rgba(125,211,252,0.10), transparent), radial-gradient(700px 380px at 12% 20%, rgba(255,46,136,0.08), transparent)",
         }}
       >
-        <Container maxWidth="md" sx={{ pt: { xs: 6, md: 9 }, pb: 8, textAlign: "center" }}>
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8, y: -10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ duration: 0.7, type: "spring", bounce: 0.4 }}
-            style={{ position: "relative", display: "inline-block" }}
-          >
-            {/* glow rings behind mascot */}
-            <Box
-              sx={{
-                position: "absolute",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%,-50%)",
-                width: { xs: 230, md: 300 },
-                height: { xs: 230, md: 300 },
-                borderRadius: "50%",
-                background:
-                  "radial-gradient(circle, rgba(46,230,110,0.25), rgba(45,212,191,0.08) 45%, transparent 70%)",
-                filter: "blur(4px)",
-                zIndex: 0,
-              }}
-            />
-            <motion.div
-              animate={{ y: [0, -10, 0] }}
-              transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-            >
-              <Box
-                component="img"
-                src="/mascot.png"
-                alt="Jest Carnival cyber-jester mascot"
-                sx={{
-                  position: "relative",
-                  zIndex: 1,
-                  width: { xs: 220, md: 300 },
-                  height: "auto",
-                  mb: 1,
-                  filter: "drop-shadow(0 12px 40px rgba(46,230,110,0.35))",
-                }}
-              />
-            </motion.div>
-          </motion.div>
+        <Sparkles />
+        <Container maxWidth="lg" sx={{ pt: { xs: 5, md: 8 }, pb: 8, position: "relative", zIndex: 1 }}>
+          <Grid container spacing={{ xs: 4, md: 6 }} alignItems="center">
+            {/* Left: copy + CTAs */}
+            <Grid item xs={12} md={6}>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                style={{ textAlign: "left" }}
+              >
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  spacing={1}
+                  sx={{
+                    display: "inline-flex",
+                    mb: 3,
+                    px: 1.6,
+                    py: 0.6,
+                    borderRadius: 999,
+                    fontFamily: monoFont,
+                    fontSize: 12,
+                    letterSpacing: "0.18em",
+                    color: "#2ee66e",
+                    border: "1px solid rgba(46,230,110,0.4)",
+                    backgroundColor: "rgba(46,230,110,0.06)",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 7,
+                      height: 7,
+                      borderRadius: "50%",
+                      backgroundColor: "#2ee66e",
+                      boxShadow: "0 0 8px #2ee66e",
+                      animation: "heroPulse 1.6s ease-in-out infinite",
+                      "@keyframes heroPulse": { "50%": { opacity: 0.3 } },
+                    }}
+                  />
+                  <span>{"LEARN JEST. FOR REAL."}</span>
+                </Stack>
+                <Typography
+                  variant="h1"
+                  sx={{
+                    fontSize: { xs: "2.8rem", md: "4.4rem" },
+                    lineHeight: 1.02,
+                    mb: 2.5,
+                    textTransform: "uppercase",
+                    letterSpacing: "-0.02em",
+                  }}
+                >
+                  Actually get
+                  <br />
+                  <RotatingWord />
+                </Typography>
+                <Typography
+                  variant="h6"
+                  sx={{ color: "text.secondary", fontWeight: 400, maxWidth: 520, mb: 3.5, lineHeight: 1.6 }}
+                >
+                  A hands-on carnival for mastering Jest — JavaScript's most popular
+                  testing framework. Understand the <em>why</em>, then write real tests
+                  and run them instantly. No setup, no fear.
+                </Typography>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                  <Button
+                    component={Link}
+                    to="/learn"
+                    variant="contained"
+                    color="primary"
+                    size="large"
+                    sx={{ fontWeight: 700, px: 4 }}
+                  >
+                    Start learning →
+                  </Button>
+                  <Button
+                    component={Link}
+                    to="/playground"
+                    variant="outlined"
+                    color="inherit"
+                    size="large"
+                    sx={{ borderColor: "rgba(46,230,110,0.4)", color: "#cdeedd", px: 4 }}
+                  >
+                    Open the Playground
+                  </Button>
+                </Stack>
+                <Stack direction="row" spacing={1} sx={{ mt: 3.5, flexWrap: "wrap", gap: 1 }}>
+                  {trustPills.map((p) => (
+                    <Box
+                      key={p}
+                      sx={{
+                        px: 1.4,
+                        py: 0.6,
+                        borderRadius: 999,
+                        fontSize: 12.5,
+                        color: "rgba(232,245,238,0.75)",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        backgroundColor: "rgba(255,255,255,0.03)",
+                      }}
+                    >
+                      {p}
+                    </Box>
+                  ))}
+                </Stack>
+              </motion.div>
+            </Grid>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-          >
-            <Box
-              sx={{
-                display: "inline-block",
-                mb: 3,
-                px: 1.6,
-                py: 0.6,
-                borderRadius: 999,
-                fontFamily: '"JetBrains Mono", monospace',
-                fontSize: 12,
-                letterSpacing: "0.18em",
-                color: "#2ee66e",
-                border: "1px solid rgba(46,230,110,0.4)",
-                backgroundColor: "rgba(46,230,110,0.06)",
-              }}
-            >
-              {"> LEARN JEST. FOR REAL."}
-            </Box>
-            <Typography
-              variant="h1"
-              sx={{
-                fontSize: { xs: "2.6rem", md: "4.2rem" },
-                lineHeight: 1.05,
-                mb: 2,
-                textTransform: "uppercase",
-                letterSpacing: "-0.02em",
-              }}
-            >
-              Actually{" "}
-              <Box
-                component="span"
-                sx={{
-                  background: "linear-gradient(90deg,#2ee66e,#2dd4bf 55%,#7dd3fc)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  textShadow: "0 0 30px rgba(46,230,110,0.3)",
-                }}
-              >
-                get
-              </Box>{" "}
-              testing.
-            </Typography>
-            <Typography
-              variant="h6"
-              sx={{ color: "text.secondary", fontWeight: 400, maxWidth: 640, mx: "auto", mb: 4 }}
-            >
-              A hands-on carnival for mastering Jest — the most popular JavaScript
-              testing framework. Understand the why, then write real tests and run
-              them instantly. No setup, no fear.
-            </Typography>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={2} justifyContent="center">
-              <Button
-                component={Link}
-                to="/learn"
-                variant="contained"
-                color="primary"
-                size="large"
-                sx={{ fontWeight: 700, px: 4 }}
-              >
-                Start learning →
-              </Button>
-              <Button
-                component={Link}
-                to="/playground"
-                variant="outlined"
-                color="inherit"
-                size="large"
-                sx={{ borderColor: "rgba(46,230,110,0.4)", color: "#cdeedd", px: 4 }}
-              >
-                Open the Playground
-              </Button>
-            </Stack>
-          </motion.div>
+            {/* Right: mascot + auto-playing terminal */}
+            <Grid item xs={12} md={6}>
+              <Box sx={{ position: "relative", maxWidth: 460, mx: "auto" }}>
+                <Box
+                  sx={{
+                    position: "absolute",
+                    inset: -30,
+                    borderRadius: "50%",
+                    background:
+                      "radial-gradient(circle at 50% 40%, rgba(46,230,110,0.22), rgba(45,212,191,0.06) 45%, transparent 70%)",
+                    filter: "blur(6px)",
+                    zIndex: 0,
+                  }}
+                />
+                <motion.img
+                  src="/mascot.png"
+                  alt="Jest Carnival cyber-jester mascot"
+                  initial={{ opacity: 0, scale: 0.85, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ duration: 0.6, type: "spring", bounce: 0.35 }}
+                  style={{
+                    position: "absolute",
+                    bottom: "calc(100% - 26px)",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    width: 124,
+                    height: "auto",
+                    zIndex: 3,
+                    filter: "drop-shadow(0 10px 24px rgba(46,230,110,0.4))",
+                    pointerEvents: "none",
+                  }}
+                />
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.2 }}
+                  style={{ position: "relative", zIndex: 1 }}
+                >
+                  <HeroTerminal />
+                </motion.div>
+              </Box>
+            </Grid>
+          </Grid>
         </Container>
 
         {/* Stats / trust band */}
