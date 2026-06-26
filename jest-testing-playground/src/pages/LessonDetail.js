@@ -17,6 +17,8 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
 import TerminalIcon from "@mui/icons-material/Terminal";
 import SearchOffIcon from "@mui/icons-material/SearchOff";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+import ChecklistRtlIcon from "@mui/icons-material/ChecklistRtl";
 import { motion } from "framer-motion";
 import lessons, { getLesson, getLessonIndex } from "../lessons/lessons";
 import { getLessonIcon } from "../lessons/lessonIcons";
@@ -27,30 +29,46 @@ const monoFont = '"JetBrains Mono", Menlo, Monaco, Consolas, monospace';
 
 // Renders `inline code` segments inside a paragraph.
 function InlineText({ text }) {
-  const parts = text.split(/(`[^`]+`)/g);
+  // Tokenize on `inline code`, **bold**, and *italic* spans.
+  const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g);
   return (
     <>
-      {parts.map((part, i) =>
-        part.startsWith("`") && part.endsWith("`") ? (
-          <Box
-            key={i}
-            component="code"
-            sx={{
-              fontFamily: monoFont,
-              fontSize: "0.88em",
-              px: 0.7,
-              py: 0.2,
-              borderRadius: 1,
-              backgroundColor: "rgba(46,230,110,0.12)",
-              color: "#5ef08f",
-            }}
-          >
-            {part.slice(1, -1)}
-          </Box>
-        ) : (
-          <React.Fragment key={i}>{part}</React.Fragment>
-        )
-      )}
+      {parts.map((part, i) => {
+        if (part.startsWith("`") && part.endsWith("`")) {
+          return (
+            <Box
+              key={i}
+              component="code"
+              sx={{
+                fontFamily: monoFont,
+                fontSize: "0.88em",
+                px: 0.7,
+                py: 0.2,
+                borderRadius: 1,
+                backgroundColor: "rgba(46,230,110,0.12)",
+                color: "#5ef08f",
+              }}
+            >
+              {part.slice(1, -1)}
+            </Box>
+          );
+        }
+        if (part.startsWith("**") && part.endsWith("**")) {
+          return (
+            <Box key={i} component="strong" sx={{ color: "#e8f5ee", fontWeight: 700 }}>
+              {part.slice(2, -2)}
+            </Box>
+          );
+        }
+        if (part.startsWith("*") && part.endsWith("*") && part.length > 2) {
+          return (
+            <Box key={i} component="em" sx={{ color: "#cfe9dc" }}>
+              {part.slice(1, -1)}
+            </Box>
+          );
+        }
+        return <React.Fragment key={i}>{part}</React.Fragment>;
+      })}
     </>
   );
 }
@@ -132,6 +150,25 @@ function Block({ block }) {
         >
           <LightbulbIcon sx={{ color: "#2ee66e" }} />
           <Typography sx={{ color: "#cdeedd" }}>
+            <InlineText text={block.text} />
+          </Typography>
+        </Stack>
+      );
+    case "warning":
+      return (
+        <Stack
+          direction="row"
+          spacing={1.5}
+          sx={{
+            p: 2,
+            my: 2,
+            borderRadius: 2,
+            backgroundColor: "rgba(255,184,76,0.08)",
+            borderLeft: "3px solid #ffb84c",
+          }}
+        >
+          <WarningAmberIcon sx={{ color: "#ffb84c" }} />
+          <Typography sx={{ color: "#f0dcc0" }}>
             <InlineText text={block.text} />
           </Typography>
         </Stack>
@@ -225,6 +262,33 @@ const LessonDetail = () => {
         {lesson.blocks.map((block, i) => (
           <Block key={i} block={block} />
         ))}
+
+        {lesson.recap && lesson.recap.length > 0 && (
+          <Paper
+            sx={{
+              mt: 4,
+              p: 2.5,
+              borderRadius: 2,
+              backgroundColor: "rgba(45,212,191,0.06)",
+              border: "1px solid rgba(45,212,191,0.25)",
+            }}
+          >
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
+              <ChecklistRtlIcon sx={{ color: "#2dd4bf" }} />
+              <Typography variant="h6">Key takeaways</Typography>
+            </Stack>
+            <Stack component="ul" spacing={1} sx={{ pl: 0, m: 0, listStyle: "none" }}>
+              {lesson.recap.map((item, i) => (
+                <Stack key={i} component="li" direction="row" spacing={1.5} alignItems="flex-start">
+                  <CheckCircleIcon sx={{ color: "#2dd4bf", fontSize: 18, mt: "2px", flexShrink: 0 }} />
+                  <Typography sx={{ color: "text.secondary", lineHeight: 1.6 }}>
+                    <InlineText text={item} />
+                  </Typography>
+                </Stack>
+              ))}
+            </Stack>
+          </Paper>
+        )}
 
         <Divider sx={{ my: 4, borderColor: "rgba(46,230,110,0.12)" }} />
 

@@ -1,91 +1,40 @@
-import React, { useRef } from "react";
+import React from "react";
 import { Box } from "@mui/material";
+import Editor from "react-simple-code-editor";
+import { highlight, languages } from "prismjs/components/prism-core";
+import "prismjs/components/prism-clike";
+import "prismjs/components/prism-javascript";
 
-// A lightweight code editor: a monospace textarea with synced line numbers
-// and tab-to-indent support. Deliberately dependency-free and fast.
+const fontStack =
+  '"JetBrains Mono", "Fira Code", Menlo, Monaco, Consolas, monospace';
+
+// Syntax-highlighted code editor (Prism + react-simple-code-editor) with
+// tab-to-indent. Keeps the same value/onChange API as before.
 const CodeEditor = ({ value, onChange, minRows = 8 }) => {
-  const textareaRef = useRef(null);
-  const gutterRef = useRef(null);
-
-  const lineCount = value.split("\n").length;
-  const lines = Array.from({ length: Math.max(lineCount, minRows) }, (_, i) => i + 1);
-
-  const handleKeyDown = (e) => {
-    if (e.key === "Tab") {
-      e.preventDefault();
-      const target = e.target;
-      const start = target.selectionStart;
-      const end = target.selectionEnd;
-      const next = value.substring(0, start) + "  " + value.substring(end);
-      onChange(next);
-      requestAnimationFrame(() => {
-        target.selectionStart = target.selectionEnd = start + 2;
-      });
-    }
-  };
-
-  const syncScroll = (e) => {
-    if (gutterRef.current) {
-      gutterRef.current.scrollTop = e.target.scrollTop;
-    }
-  };
-
-  const sharedTextStyle = {
-    fontFamily: '"JetBrains Mono", "Fira Code", Menlo, Monaco, Consolas, monospace',
-    fontSize: "14px",
-    lineHeight: "22px",
-    margin: 0,
-  };
-
   return (
     <Box
       sx={{
-        display: "flex",
         borderRadius: 2,
-        overflow: "hidden",
-        border: "1px solid rgba(255,255,255,0.12)",
-        backgroundColor: "#11121c",
+        overflow: "auto",
+        border: "1px solid rgba(46,230,110,0.18)",
+        backgroundColor: "#0c1410",
+        "& textarea": { outline: "none", caretColor: "#2ee66e" },
+        "& textarea::placeholder": { color: "rgba(255,255,255,0.3)" },
       }}
     >
-      <Box
-        ref={gutterRef}
-        sx={{
-          ...sharedTextStyle,
-          py: 1.5,
-          px: 1,
-          textAlign: "right",
-          color: "rgba(255,255,255,0.25)",
-          userSelect: "none",
-          overflow: "hidden",
-          backgroundColor: "#0c0d14",
-          minWidth: "44px",
-        }}
-      >
-        {lines.map((n) => (
-          <div key={n}>{n}</div>
-        ))}
-      </Box>
-      <textarea
-        ref={textareaRef}
+      <Editor
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={handleKeyDown}
-        onScroll={syncScroll}
-        spellCheck={false}
-        wrap="off"
+        onValueChange={onChange}
+        highlight={(code) => highlight(code, languages.javascript, "javascript")}
+        padding={14}
+        tabSize={2}
+        insertSpaces
         style={{
-          ...sharedTextStyle,
-          flex: 1,
-          minHeight: `${minRows * 22 + 24}px`,
-          padding: "12px",
-          color: "#e6e6f0",
-          background: "transparent",
-          border: "none",
-          outline: "none",
-          resize: "vertical",
-          whiteSpace: "pre",
-          overflowX: "auto",
-          caretColor: "#2ee66e",
+          fontFamily: fontStack,
+          fontSize: 14,
+          lineHeight: 1.6,
+          minHeight: minRows * 22 + 28,
+          color: "#e6f0ea",
         }}
       />
     </Box>

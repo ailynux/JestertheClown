@@ -134,9 +134,14 @@ const TestResults = ({ result }) => {
                     ) : (
                       <CancelIcon sx={{ color: "#ff5470", fontSize: 20 }} />
                     )}
-                    <Typography sx={{ fontFamily: monoFont, fontSize: 14, color: "#e6e6f0" }}>
+                    <Typography sx={{ fontFamily: monoFont, fontSize: 14, color: "#e6e6f0", flex: 1 }}>
                       {fullName}
                     </Typography>
+                    {typeof r.duration === "number" && (
+                      <Typography sx={{ fontFamily: monoFont, fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+                        {r.duration < 1 ? "<1" : Math.round(r.duration)} ms
+                      </Typography>
+                    )}
                   </Stack>
                   {!passed && r.message && (
                     <Box

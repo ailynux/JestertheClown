@@ -34,11 +34,20 @@ const TestRunner = ({ initialCode, solution, minRows = 8, onAllPass }) => {
     if (solution) setCode(solution);
   };
 
+  const handleKeyDown = (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+      e.preventDefault();
+      if (!running) handleRun();
+    }
+  };
+
   return (
     <Box>
-      <CodeEditor value={code} onChange={setCode} minRows={minRows} />
+      <Box onKeyDown={handleKeyDown}>
+        <CodeEditor value={code} onChange={setCode} minRows={minRows} />
+      </Box>
 
-      <Stack direction="row" spacing={1.5} sx={{ mt: 2, mb: 2, flexWrap: "wrap", gap: 1 }}>
+      <Stack direction="row" spacing={1.5} sx={{ mt: 2, mb: 2, flexWrap: "wrap", gap: 1 }} alignItems="center">
         <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
           <Button
             variant="contained"
@@ -51,6 +60,21 @@ const TestRunner = ({ initialCode, solution, minRows = 8, onAllPass }) => {
             {running ? "Running…" : "Run Tests"}
           </Button>
         </motion.div>
+        <Box
+          component="kbd"
+          sx={{
+            display: { xs: "none", sm: "inline-block" },
+            fontFamily: '"JetBrains Mono", monospace',
+            fontSize: 11,
+            color: "rgba(232,245,238,0.5)",
+            border: "1px solid rgba(255,255,255,0.15)",
+            borderRadius: 1,
+            px: 0.8,
+            py: 0.3,
+          }}
+        >
+          ⌘ / Ctrl + ↵
+        </Box>
         <Button
           variant="outlined"
           color="inherit"

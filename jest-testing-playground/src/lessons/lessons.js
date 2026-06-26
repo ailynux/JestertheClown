@@ -42,13 +42,52 @@ const skillLessons = [
         text: "Read it out loud: \"I expect 2 + 2 to be 4.\" If it is, the test passes (green). If not, it fails (red) and tells you exactly what went wrong.",
       },
       {
+        type: "heading",
+        text: "What a failure actually looks like",
+      },
+      {
+        type: "paragraph",
+        text: "Failing tests are not the enemy — they're the whole point. A good failure message hands you everything you need to debug. When `expect(2 + 2).toBe(5)` fails, Jest prints both sides so you can see the mismatch at a glance:",
+      },
+      {
+        type: "code",
+        code: `expect(received).toBe(expected)
+
+Expected: 5
+Received: 4`,
+      },
+      {
+        type: "paragraph",
+        text: "Two numbers, side by side. Real debugging is mostly reading these messages carefully — the answer is almost always right there. Get comfortable *reading* failures, not fearing them.",
+      },
+      {
+        type: "heading",
+        text: "Naming tests well",
+      },
+      {
+        type: "paragraph",
+        text: "The string you pass to `test(...)` is documentation. Six months from now, a failing test named `\"works\"` tells you nothing, but `\"returns 0 for an empty cart\"` tells you exactly what broke. Describe the *behavior* and the *condition*: \"it does X when Y.\"",
+      },
+      {
+        type: "code",
+        code: `// 🙈 vague — useless when it fails
+test("cart", () => { /* ... */ });
+
+// 🙌 specific — the name IS the bug report
+test("returns 0 for an empty cart", () => { /* ... */ });`,
+      },
+      {
         type: "tip",
-        text: "Golden rule: test behavior, not implementation details. Check what your code does, not how it does it.",
+        text: "Golden rule: test behavior, not implementation details. Check WHAT your code does (its output), not HOW it does it (its internal steps). Behavior tests survive refactors; implementation tests break the moment you tidy up.",
+      },
+      {
+        type: "warning",
+        text: "A test with no `expect` inside it always passes — silently. An empty test is worse than no test because it gives false confidence. Every test needs at least one real assertion.",
       },
     ],
     exercise: {
       instructions:
-        "Run this test and watch it pass. Then change `4` to `5` and run again to see what a failing test looks like.",
+        "Run this test and watch it pass. Then change `4` to `5` and run again — read the failure message carefully and notice how it shows Expected vs Received. Then change it back to green.",
       starterCode: `test("two plus two is four", () => {
   expect(2 + 2).toBe(4);
 });`,
@@ -56,6 +95,12 @@ const skillLessons = [
     solution: `test("two plus two is four", () => {
   expect(2 + 2).toBe(4);
 });`,
+    recap: [
+      "Every test follows the shape `test(name, () => { expect(...).matcher(...) })`.",
+      "Passing is green, failing is red — and a failure prints Expected vs Received to guide you.",
+      "Name tests after the behavior and condition: \"it does X when Y.\"",
+      "Test behavior, not implementation. And a test with no `expect` is a false positive.",
+    ],
   },
 
   {
@@ -81,13 +126,54 @@ expect(a).toBe({ name: "Jester" });   // ❌ different objects in memory
 expect(a).toEqual({ name: "Jester" }); // ✅ same shape and values`,
       },
       {
+        type: "heading",
+        text: "Why does toBe fail on objects?",
+      },
+      {
+        type: "paragraph",
+        text: "`toBe` uses `Object.is` under the hood — essentially the `===` operator. For primitives, `===` compares *values*: `2 === 2` is true. But for objects and arrays, `===` compares *references* — it asks \"are these the exact same object in memory?\" Two objects with identical contents are still two different objects, so `===` (and `toBe`) says no.",
+      },
+      {
+        type: "code",
+        code: `const a = { name: "Jester" };
+const b = { name: "Jester" };
+const c = a;
+
+console.log(a === b); // false — different objects
+console.log(a === c); // true  — same reference
+
+expect(a).toBe(c);     // ✅ literally the same object
+expect(a).toEqual(b);  // ✅ same shape and values`,
+      },
+      {
+        type: "paragraph",
+        text: "`toEqual` ignores references and walks the whole structure recursively, comparing every value. That's exactly what you want 99% of the time when checking objects and arrays.",
+      },
+      {
+        type: "heading",
+        text: "toEqual vs toStrictEqual",
+      },
+      {
+        type: "paragraph",
+        text: "There's a stricter cousin: `toStrictEqual`. It also checks that `undefined` properties and types line up. `toEqual` treats `{ a: undefined }` and `{}` as equal; `toStrictEqual` does not. Reach for `toStrictEqual` when those subtle differences matter.",
+      },
+      {
+        type: "code",
+        code: `expect({ a: undefined, b: 2 }).toEqual({ b: 2 });       // ✅ passes
+expect({ a: undefined, b: 2 }).toStrictEqual({ b: 2 }); // ❌ fails`,
+      },
+      {
         type: "tip",
-        text: "Rule of thumb: use toBe for primitives (numbers, strings, booleans) and toEqual for objects and arrays.",
+        text: "Rule of thumb: use toBe for primitives (numbers, strings, booleans) and toEqual for objects and arrays. Reach for toStrictEqual when undefined keys or class types must match exactly.",
+      },
+      {
+        type: "warning",
+        text: "This is the single most common beginner trap: using toBe on an object and getting a baffling failure where Expected and Received look identical. They ARE identical in content — just not the same reference. Switch to toEqual.",
       },
     ],
     exercise: {
       instructions:
-        "The second test is failing because it uses the wrong matcher for an object. Fix it so both tests pass.",
+        "The second test is failing because it uses the wrong matcher for an object. Read the failure (Expected and Received look the same!), then fix it so both tests pass.",
       starterCode: `test("adds numbers", () => {
   expect(3 + 4).toBe(7);
 });
@@ -105,6 +191,12 @@ test("builds a clown", () => {
   const clown = { name: "Jester", happy: true };
   expect(clown).toEqual({ name: "Jester", happy: true });
 });`,
+    recap: [
+      "`toBe` is `===`: value comparison for primitives, reference comparison for objects.",
+      "`toEqual` recursively compares contents — use it for objects and arrays.",
+      "`toStrictEqual` additionally checks `undefined` keys and class types.",
+      "Identical-looking Expected/Received on a failure usually means you used `toBe` on an object.",
+    ],
   },
 
   {
@@ -137,6 +229,49 @@ expect("").toBeFalsy();`,
         type: "code",
         code: `expect(5).not.toBeNull();
 expect("hi").not.toBeFalsy();`,
+      },
+      {
+        type: "heading",
+        text: "The falsy values you must memorize",
+      },
+      {
+        type: "paragraph",
+        text: "JavaScript has exactly eight falsy values — everything else is truthy. Knowing them cold saves you from a whole category of bugs:",
+      },
+      {
+        type: "code",
+        code: `false, 0, -0, 0n, "", null, undefined, NaN
+// ↑ all falsy. EVERYTHING else (including [], {}, "0", "false") is truthy.`,
+      },
+      {
+        type: "paragraph",
+        text: "That last part trips people up constantly: an empty array `[]` and an empty object `{}` are *truthy*. So is the string `\"0\"`. If you ever write `if (items)` to check \"do I have items?\", remember an empty array passes that check.",
+      },
+      {
+        type: "heading",
+        text: "null vs undefined — they're different",
+      },
+      {
+        type: "paragraph",
+        text: "`undefined` means \"this was never assigned a value.\" `null` means \"intentionally set to nothing.\" Jest keeps them separate, so be precise: `toBeNull()` only matches `null`, `toBeUndefined()` only matches `undefined`, and `toBeDefined()` is the opposite of `toBeUndefined()`.",
+      },
+      {
+        type: "code",
+        code: `let notSet;
+expect(notSet).toBeUndefined();   // ✅
+expect(notSet).toBeNull();        // ❌ undefined is not null
+
+const cleared = null;
+expect(cleared).toBeNull();       // ✅
+expect(cleared).toBeDefined();    // ✅ null counts as "defined"`,
+      },
+      {
+        type: "tip",
+        text: "Prefer the specific matcher over a generic one. `expect(x).toBeNull()` gives a clearer failure than `expect(x === null).toBe(true)` — and reads like a sentence.",
+      },
+      {
+        type: "warning",
+        text: "`toBeTruthy`/`toBeFalsy` are blunt instruments. `expect(user).toBeTruthy()` passes for `42`, `\"hi\"`, `[]`, and `{}` alike. If you actually care that `user` is a specific value, assert that value instead — truthiness checks can hide bugs.",
       },
     ],
     exercise: {
@@ -177,6 +312,12 @@ test("zero is falsy", () => {
 test("a name is truthy", () => {
   expect("Jester").toBeTruthy();
 });`,
+    recap: [
+      "Eight falsy values: `false, 0, -0, 0n, \"\", null, undefined, NaN`. Everything else is truthy.",
+      "`[]` and `{}` are truthy — a common source of bugs in `if` checks.",
+      "`null` (intentional nothing) and `undefined` (never set) are distinct; match each precisely.",
+      "Prefer specific matchers over `toBeTruthy/toBeFalsy`, which can mask real values.",
+    ],
   },
 
   {
@@ -220,6 +361,39 @@ expect(0.1 + 0.2).toBeCloseTo(0.3); // ✅`,
         code: `expect("Jester the Clown").toMatch("Clown");
 expect("test@example.com").toMatch(/@/);`,
       },
+      {
+        type: "paragraph",
+        text: "Passing a string checks for a substring; passing a regular expression unlocks real pattern power — case-insensitivity, anchors, character classes, and more.",
+      },
+      {
+        type: "code",
+        code: `expect("Hello World").toMatch(/hello/i);   // i = ignore case
+expect("abc123").toMatch(/^[a-z]+\\d+$/);   // letters then digits
+expect("error: timeout").not.toMatch(/success/);`,
+      },
+      {
+        type: "heading",
+        text: "Why toBeCloseTo exists",
+      },
+      {
+        type: "paragraph",
+        text: "Computers store decimals in binary, and most decimals can't be represented exactly — just like 1/3 can't be written exactly in decimal. So `0.1 + 0.2` actually evaluates to `0.30000000000000004`. This isn't a Jest quirk; it's how floating-point works in every language.",
+      },
+      {
+        type: "code",
+        code: `console.log(0.1 + 0.2);            // 0.30000000000000004
+expect(0.1 + 0.2).toBeCloseTo(0.3); // ✅ close enough
+// optional second arg = number of decimal digits to check
+expect(3.14159).toBeCloseTo(3.14, 2); // ✅ matches to 2 places`,
+      },
+      {
+        type: "tip",
+        text: "Use toBe for integers (they're exact) and toBeCloseTo for any value that came out of decimal arithmetic — money, percentages, averages, physics.",
+      },
+      {
+        type: "warning",
+        text: "Beginners reach for `toMatch` to compare two strings for equality. Don't — use `toBe`. `toMatch` is for partial/pattern matching, and `expect(\"on\").toMatch(\"on\")` would also pass against \"button\", \"onion\", etc.",
+      },
     ],
     exercise: {
       instructions:
@@ -241,6 +415,12 @@ test("email looks valid", () => {
   const email = "clown@circus.com";
   expect(email).toMatch(/@/);
 });`,
+    recap: [
+      "Compare numbers with `toBeGreaterThan`, `toBeLessThan`, and their `OrEqual` variants.",
+      "Floating-point math is imprecise everywhere — use `toBeCloseTo` for decimals, `toBe` for integers.",
+      "`toMatch` takes a substring or a regex; regex unlocks case-insensitivity, anchors, and classes.",
+      "Don't use `toMatch` for equality — use `toBe`, since a substring can match by accident.",
+    ],
   },
 
   {
@@ -272,6 +452,44 @@ expect(show).toHaveProperty("name");
 expect(show).toHaveProperty("name", "Carnival");
 expect(show).toHaveProperty("tickets.sold", 42);`,
       },
+      {
+        type: "heading",
+        text: "toContain vs toContainEqual",
+      },
+      {
+        type: "paragraph",
+        text: "`toContain` uses reference/value equality (like `toBe`). That's perfect for arrays of primitives, but it fails for arrays of objects — because each object is a distinct reference. For \"does this array contain an object that looks like this?\", use `toContainEqual`.",
+      },
+      {
+        type: "code",
+        code: `const acts = [{ name: "clown" }, { name: "juggler" }];
+
+expect(acts).toContain({ name: "clown" });      // ❌ different reference
+expect(acts).toContainEqual({ name: "clown" }); // ✅ deep match`,
+      },
+      {
+        type: "heading",
+        text: "Matching part of an object with toMatchObject",
+      },
+      {
+        type: "paragraph",
+        text: "Often you only care about *some* fields — say an API returns 20 properties but you only need to verify three. `toMatchObject` asserts that the received object contains (at least) the given subset, ignoring extra keys.",
+      },
+      {
+        type: "code",
+        code: `const response = { id: 7, name: "Jester", createdAt: "2026-01-01", internal: true };
+
+// only assert what you care about
+expect(response).toMatchObject({ id: 7, name: "Jester" }); // ✅`,
+      },
+      {
+        type: "tip",
+        text: "Reach for the most specific matcher you can: toHaveLength beats checking .length with toBe, and toMatchObject beats pulling out individual fields. Specific matchers give clearer failure messages.",
+      },
+      {
+        type: "warning",
+        text: "`toContain` on an array of objects almost always fails for confusing reasons. The moment your array holds objects, switch to `toContainEqual` (or `toEqual` on the whole array).",
+      },
     ],
     exercise: {
       instructions:
@@ -292,6 +510,12 @@ expect(show).toHaveProperty("tickets.sold", 42);`,
   expect(lineup).toContain("clown");
   expect(lineup).toHaveLength(3);
 });`,
+    recap: [
+      "Arrays: `toContain` (membership) and `toHaveLength` (size).",
+      "For arrays of objects, use `toContainEqual` — `toContain` compares references.",
+      "Objects: `toHaveProperty(\"a.b\", value)` reaches nested keys with dot paths.",
+      "`toMatchObject` checks a subset of fields and ignores the rest — great for API responses.",
+    ],
   },
 
   {
@@ -336,6 +560,47 @@ test("divide guards against zero", () => {
         type: "tip",
         text: "Notice the arrow function wrapper: expect(() => divide(10, 0)). If you wrote expect(divide(10, 0)) it would throw before Jest could catch it.",
       },
+      {
+        type: "heading",
+        text: "Four ways to match an error",
+      },
+      {
+        type: "paragraph",
+        text: "`toThrow` is flexible about what you pass it. Each form is progressively more specific — and more specific is better, because it proves you threw the *right* error, not just *some* error:",
+      },
+      {
+        type: "code",
+        code: `expect(fn).toThrow();                       // threw anything at all
+expect(fn).toThrow("Cannot divide");        // message contains this substring
+expect(fn).toThrow(/divide by zero/i);      // message matches this regex
+expect(fn).toThrow(TypeError);              // is an instance of this error class`,
+      },
+      {
+        type: "heading",
+        text: "The Arrange–Act–Assert shape",
+      },
+      {
+        type: "paragraph",
+        text: "Most function tests read best in three beats. **Arrange** the inputs, **Act** by calling the function, **Assert** on the result. Keeping these visually separate makes a test instantly scannable.",
+      },
+      {
+        type: "code",
+        code: `test("applies a discount", () => {
+  // Arrange
+  const price = 100;
+  const code = "SAVE10";
+
+  // Act
+  const final = applyDiscount(price, code);
+
+  // Assert
+  expect(final).toBe(90);
+});`,
+      },
+      {
+        type: "warning",
+        text: "The #1 toThrow mistake: forgetting the wrapper. `expect(divide(10, 0)).toThrow()` runs `divide(10, 0)` immediately, the error escapes before `expect` is even called, and your test errors out instead of passing. Always wrap: `expect(() => divide(10, 0))`.",
+      },
     ],
     exercise: {
       instructions:
@@ -364,6 +629,12 @@ test("capitalizes a word", () => {
 test("throws on empty input", () => {
   expect(() => capitalize("")).toThrow();
 });`,
+    recap: [
+      "Test real functions: call them and assert on the return value.",
+      "To assert a throw, pass a wrapper: `expect(() => fn()).toThrow()`.",
+      "`toThrow` accepts nothing, a substring, a regex, or an error class — prefer the specific forms.",
+      "Structure tests as Arrange → Act → Assert for instant readability.",
+    ],
   },
 
   {
@@ -404,6 +675,41 @@ test("can add an item", () => {
         type: "paragraph",
         text: "`beforeAll` / `afterAll` run once for the whole group — handy for expensive one-time setup.",
       },
+      {
+        type: "heading",
+        text: "The exact running order",
+      },
+      {
+        type: "paragraph",
+        text: "When you mix all four hooks, Jest runs them in a predictable order. For each test: every `beforeAll` (once, up front) → `beforeEach` → the test → `afterEach` → and finally `afterAll` once at the end. Outer (describe-level) hooks wrap inner ones.",
+      },
+      {
+        type: "code",
+        code: `beforeAll(() => console.log("1: once, before everything"));
+beforeEach(() => console.log("2: before each test"));
+afterEach(() => console.log("3: after each test"));
+afterAll(() => console.log("4: once, after everything"));
+
+test("a", () => {}); // logs 2, 3
+test("b", () => {}); // logs 2, 3
+// overall: 1, [2,3], [2,3], 4`,
+      },
+      {
+        type: "heading",
+        text: "beforeEach vs beforeAll — choosing right",
+      },
+      {
+        type: "paragraph",
+        text: "Default to `beforeEach`. It rebuilds fresh state for every test, which keeps tests isolated and independent. Only use `beforeAll` for genuinely expensive, read-only setup (like starting a server or seeding a database once) — and never mutate that shared resource inside a test.",
+      },
+      {
+        type: "warning",
+        text: "Shared mutable state set up in `beforeAll` is a classic flaky-test factory. If test A modifies it, test B might pass or fail depending on the order they run in. When in doubt, reset in `beforeEach`.",
+      },
+      {
+        type: "tip",
+        text: "Use afterEach for cleanup that must always happen — restoring spies, clearing timers, closing connections — so one test's mess never leaks into the next.",
+      },
     ],
     exercise: {
       instructions:
@@ -437,6 +743,12 @@ test("second test also starts fresh", () => {
   count = count + 1;
   expect(count).toBe(1);
 });`,
+    recap: [
+      "`beforeEach`/`afterEach` run around every test; `beforeAll`/`afterAll` run once per group.",
+      "Order per test: beforeAll (once) → beforeEach → test → afterEach → … → afterAll (once).",
+      "Default to `beforeEach` for fresh, isolated state; reserve `beforeAll` for expensive read-only setup.",
+      "Shared mutable state across tests causes flakiness and order-dependent failures.",
+    ],
   },
 
   {
@@ -468,6 +780,51 @@ test("second test also starts fresh", () => {
         type: "paragraph",
         text: "You can nest describe blocks to mirror the structure of what you're testing.",
       },
+      {
+        type: "code",
+        code: `describe("ShoppingCart", () => {
+  describe("when empty", () => {
+    test("total is 0", () => { /* ... */ });
+    test("checkout is disabled", () => { /* ... */ });
+  });
+
+  describe("with items", () => {
+    test("sums the prices", () => { /* ... */ });
+    test("applies tax", () => { /* ... */ });
+  });
+});`,
+      },
+      {
+        type: "paragraph",
+        text: "Notice how the names read like sentences when combined: \"ShoppingCart › when empty › total is 0.\" That nesting is exactly what shows up in your test output, so a failure tells you the component, the scenario, and the expectation all at once.",
+      },
+      {
+        type: "heading",
+        text: "Hooks are scoped to their describe",
+      },
+      {
+        type: "paragraph",
+        text: "A `beforeEach` inside a `describe` only runs for the tests in that block. This lets each scenario build its own starting point without affecting unrelated tests — a huge organizational win on bigger files.",
+      },
+      {
+        type: "code",
+        code: `describe("with items", () => {
+  let cart;
+  beforeEach(() => {
+    cart = new ShoppingCart();
+    cart.add({ price: 10 });
+  });
+  // every test in here starts with a one-item cart
+});`,
+      },
+      {
+        type: "tip",
+        text: "Helpful focus tools while developing: describe.only / test.only run just that block, and describe.skip / test.skip temporarily ignore one. Just don't commit a stray .only — it silently disables the rest of your suite.",
+      },
+      {
+        type: "warning",
+        text: "describe is for organization, not behavior — code written directly inside a describe (outside a hook or test) runs during the collection phase, before any test. Put setup in beforeEach, not loose in the describe body.",
+      },
     ],
     exercise: {
       instructions:
@@ -489,6 +846,12 @@ test("measures length", () => {
     expect("clown".length).toBe(5);
   });
 });`,
+    recap: [
+      "`describe` groups related tests and makes output read like sentences.",
+      "Nest describes to mirror scenarios; the nesting appears in failure messages.",
+      "Hooks like `beforeEach` are scoped to their describe block.",
+      "Use `.only`/`.skip` while developing — but never commit a stray `.only`.",
+    ],
   },
 
   {
@@ -519,6 +882,62 @@ test("resolves to a name", async () => {
         type: "tip",
         text: "Mark the test callback `async` and `await` the promise. If you forget to await, the test can finish before the assertion runs and pass by accident.",
       },
+      {
+        type: "heading",
+        text: "The false-pass trap, shown",
+      },
+      {
+        type: "paragraph",
+        text: "This is the single most dangerous async testing bug. Here's a test that *looks* fine but is completely broken — it never actually checks anything:",
+      },
+      {
+        type: "code",
+        code: `// 🐛 BROKEN: not async, no await
+test("user is loaded", () => {
+  fetchUser(1).then((user) => {
+    expect(user.name).toBe("WRONG"); // never runs before the test ends!
+  });
+});
+// The test passes. The assertion inside .then runs later — after Jest
+// already marked it green. You have a test that can never fail.`,
+      },
+      {
+        type: "paragraph",
+        text: "The fix is to give Jest something to wait for: either `await` the promise, or `return` it. Both tell Jest \"don't finish this test until the async work settles.\"",
+      },
+      {
+        type: "code",
+        code: `// ✅ await (cleanest)
+test("user is loaded", async () => {
+  const user = await fetchUser(1);
+  expect(user.name).toBe("Jester");
+});
+
+// ✅ or return the promise
+test("user is loaded", () => {
+  return fetchUser(1).then((user) => {
+    expect(user.name).toBe("Jester");
+  });
+});`,
+      },
+      {
+        type: "heading",
+        text: "Testing rejections",
+      },
+      {
+        type: "paragraph",
+        text: "To assert that async code fails, wrap the await in a try/catch — or use the much tidier `.rejects` matcher (its own lesson). Don't forget `expect.assertions(n)` if you want to guarantee the catch block actually ran.",
+      },
+      {
+        type: "code",
+        code: `test("rejects bad ids", async () => {
+  await expect(fetchUser(-1)).rejects.toThrow("invalid id");
+});`,
+      },
+      {
+        type: "warning",
+        text: "Rule: every promise in a test must be awaited or returned. A bare `expect(...)` inside a `.then` with no await/return is the classic test that passes forever and protects nothing.",
+      },
     ],
     exercise: {
       instructions:
@@ -540,6 +959,12 @@ test("the answer is 42", async () => {
   const answer = await getAnswer();
   expect(answer).toBe(42);
 });`,
+    recap: [
+      "Make the test wait: mark the callback `async` and `await` the promise (or `return` it).",
+      "Forgetting to await creates a test that passes without ever asserting anything.",
+      "Test rejections with try/catch or the `.rejects` matcher.",
+      "Rule: every promise in a test must be awaited or returned.",
+    ],
   },
 
   {
@@ -583,8 +1008,61 @@ test("greet notifies the user", () => {
 });`,
       },
       {
+        type: "heading",
+        text: "Why mock at all?",
+      },
+      {
+        type: "paragraph",
+        text: "This is the part that finally makes Jest \"click\" for most people. Imagine testing a `checkout()` function that charges a credit card and sends an email. You do NOT want your test suite to actually charge real cards or spam real inboxes every time it runs. Mocks let you swap those real, slow, dangerous dependencies for fast fakes you fully control.",
+      },
+      {
+        type: "list",
+        items: [
+          "**Speed** — a mock returns instantly; a real network call takes hundreds of milliseconds.",
+          "**Isolation** — you're testing YOUR code, not the payment provider's. If their server is down, your test shouldn't break.",
+          "**Control** — you can force a mock to return success, failure, or weird edge cases on demand.",
+          "**Safety** — no real emails, charges, or database writes during a test run.",
+        ],
+      },
+      {
+        type: "heading",
+        text: "Two things mocks do",
+      },
+      {
+        type: "paragraph",
+        text: "A mock plays two roles, and it helps to keep them straight. First, it's a **spy**: it remembers how it was called (how many times, with what arguments). Second, it's a **stub**: you can program what it returns so the code under test receives a controlled answer.",
+      },
+      {
+        type: "code",
+        code: `const getUser = jest.fn();
+
+// stub: program the return value
+getUser.mockReturnValue({ id: 1, name: "Jester" });
+// you can even queue different values per call
+getUser.mockReturnValueOnce({ id: 2 }); // used on the 1st call only
+
+// spy: inspect how it was used afterwards
+getUser("by-id", 1);
+expect(getUser).toHaveBeenCalledWith("by-id", 1);
+expect(getUser.mock.calls).toHaveLength(1);`,
+      },
+      {
+        type: "paragraph",
+        text: "For functions that return promises (most real dependencies), use `mockResolvedValue` and `mockRejectedValue` to fake async results cleanly:",
+      },
+      {
+        type: "code",
+        code: `const api = jest.fn();
+api.mockResolvedValue({ ok: true });   // resolves to this
+// api.mockRejectedValue(new Error("down")); // or simulate a failure`,
+      },
+      {
         type: "tip",
-        text: "Use mockReturnValue to control output: const getId = jest.fn().mockReturnValue(7);",
+        text: "Use mockReturnValue to control output: const getId = jest.fn().mockReturnValue(7). And reset mocks between tests (jest.clearAllMocks or a beforeEach) so call counts don't bleed across tests.",
+      },
+      {
+        type: "warning",
+        text: "Don't over-mock. If you mock everything, your test only proves your mocks were called in the right order — not that the real thing works. Mock the slow/dangerous edges (network, DB, time); run your own logic for real.",
       },
     ],
     exercise: {
@@ -612,6 +1090,213 @@ test("saves every item", () => {
   expect(save).toHaveBeenCalledTimes(3);
   expect(save).toHaveBeenCalledWith("b");
 });`,
+    recap: [
+      "Mock the slow/dangerous edges (network, DB, email, time) — for speed, isolation, control, and safety.",
+      "A mock is both a spy (records calls) and a stub (you program its return value).",
+      "Program output with `mockReturnValue` / `mockResolvedValue` (and the `…Once` variants).",
+      "Reset mocks between tests, and don't over-mock or you test the mocks, not the code.",
+    ],
+  },
+  {
+    slug: "parametrized-tests",
+    emoji: "🧮",
+    title: "Parametrized Tests with test.each",
+    level: "Intermediate",
+    duration: "6 min",
+    summary:
+      "Stop copy-pasting the same test. Run one test across a whole table of inputs with test.each.",
+    blocks: [
+      {
+        type: "paragraph",
+        text: "When you want to check the *same* behavior against many inputs, copy-pasting a test five times is noisy and easy to get wrong. `test.each` runs a single test body once per row of data.",
+      },
+      {
+        type: "code",
+        code: `test.each([\n  [1, 1, 2],\n  [2, 3, 5],\n  [10, -4, 6],\n])("add(%i, %i) = %i", (a, b, expected) => {\n  expect(add(a, b)).toBe(expected);\n});`,
+      },
+      {
+        type: "paragraph",
+        text: "Each array row is spread as the arguments to your test function. The placeholders in the name (`%i`, `%s`, `%p`, `%#` for the index) get filled in, so each case shows up as its own labelled test in the results.",
+      },
+      {
+        type: "tip",
+        text: "This is perfect for edge-case tables: a list of inputs and their expected outputs. One readable test, many cases, and a failure tells you exactly which row broke.",
+      },
+      {
+        type: "warning",
+        text: "Don't cram unrelated assertions into one `test.each`. It's for the same check across different data — not a dumping ground for everything.",
+      },
+    ],
+    exercise: {
+      instructions:
+        "Finish the table so `isVowel` is checked for several letters. Add a row that asserts \"z\" is NOT a vowel (expected false), then run.",
+      starterCode: `function isVowel(ch) {
+  return "aeiou".includes(ch);
+}
+
+test.each([
+  ["a", true],
+  ["e", true],
+  // add a row for "z" -> false
+])("isVowel(%s) === %p", (ch, expected) => {
+  expect(isVowel(ch)).toBe(expected);
+});`,
+    },
+    solution: `function isVowel(ch) {
+  return "aeiou".includes(ch);
+}
+
+test.each([
+  ["a", true],
+  ["e", true],
+  ["z", false],
+])("isVowel(%s) === %p", (ch, expected) => {
+  expect(isVowel(ch)).toBe(expected);
+});`,
+    recap: [
+      "`test.each(table)(name, fn)` runs one test per row of `table`.",
+      "Array rows are spread as the arguments to your test callback.",
+      "Name placeholders: `%s` string, `%i`/`%d` number, `%p` pretty value, `%#` row index.",
+      "Use it for the same assertion across many inputs — especially edge cases.",
+    ],
+  },
+  {
+    slug: "promises-resolves-rejects",
+    emoji: "🔀",
+    title: "Async Matchers: resolves & rejects",
+    level: "Intermediate",
+    duration: "6 min",
+    summary:
+      "A cleaner way to assert on promises — without manually awaiting first.",
+    blocks: [
+      {
+        type: "paragraph",
+        text: "You already know you can `await` a promise and then assert on the value. Jest gives you a tidier shortcut: `.resolves` and `.rejects` let you match directly on a promise.",
+      },
+      {
+        type: "code",
+        code: `// the long way\nconst user = await fetchUser(1);\nexpect(user.name).toBe("Jester");\n\n// with .resolves\nawait expect(fetchUser(1)).resolves.toHaveProperty("name", "Jester");`,
+      },
+      {
+        type: "paragraph",
+        text: "`.resolves` waits for the promise to fulfil, then runs the matcher on the resolved value. `.rejects` expects the promise to be rejected, and runs the matcher on the error.",
+      },
+      {
+        type: "code",
+        code: `await expect(loadMissing()).rejects.toThrow("not found");`,
+      },
+      {
+        type: "warning",
+        text: "Always `await` (or `return`) the expectation. If you forget, the test can finish before the promise settles and a real failure may slip through as a false pass.",
+      },
+    ],
+    exercise: {
+      instructions:
+        "Write two tests: one asserting `getPrice()` resolves to 42, and one asserting `getError()` rejects with the message \"boom\". Remember to await each expectation.",
+      starterCode: `function getPrice() {
+  return Promise.resolve(42);
+}
+function getError() {
+  return Promise.reject(new Error("boom"));
+}
+
+// test 1: getPrice resolves to 42
+
+// test 2: getError rejects with "boom"`,
+    },
+    solution: `function getPrice() {
+  return Promise.resolve(42);
+}
+function getError() {
+  return Promise.reject(new Error("boom"));
+}
+
+test("getPrice resolves to 42", async () => {
+  await expect(getPrice()).resolves.toBe(42);
+});
+
+test("getError rejects with boom", async () => {
+  await expect(getError()).rejects.toThrow("boom");
+});`,
+    recap: [
+      "`.resolves` runs the matcher on a promise's fulfilled value.",
+      "`.rejects` expects rejection and runs the matcher on the error.",
+      "Always `await` (or `return`) the expectation so the test waits for it.",
+      "`.rejects.toThrow(msg)` is the idiomatic way to assert a failure message.",
+    ],
+  },
+  {
+    slug: "spying",
+    emoji: "🕵️",
+    title: "Spying with jest.spyOn",
+    level: "Advanced",
+    duration: "7 min",
+    summary:
+      "Watch a real method without replacing it — then take over its behavior when you need to.",
+    blocks: [
+      {
+        type: "paragraph",
+        text: "`jest.fn()` creates a brand-new fake. But sometimes you want to watch a method that already exists on an object — log how it was called while letting it run normally. That's `jest.spyOn`.",
+      },
+      {
+        type: "code",
+        code: `const spy = jest.spyOn(analytics, "track");\n\nanalytics.track("signup");\n\nexpect(spy).toHaveBeenCalledWith("signup");\nspy.mockRestore(); // put the real method back`,
+      },
+      {
+        type: "paragraph",
+        text: "By default a spy *calls through* to the real implementation, so behavior is unchanged — you're just observing. When you want to fake the result instead, chain `.mockReturnValue(...)` or `.mockImplementation(...)`.",
+      },
+      {
+        type: "code",
+        code: `jest.spyOn(api, "fetchUser").mockReturnValue({ id: 1 });`,
+      },
+      {
+        type: "warning",
+        text: "A spy mutates the real object for the rest of the test. Call `spy.mockRestore()` (or restore in afterEach) so you don't leak fake behavior into other tests.",
+      },
+    ],
+    exercise: {
+      instructions:
+        "Spy on `logger.write`, call `saveUser` which uses it, and assert the spy was called with \"saved\". Restore the spy at the end.",
+      starterCode: `const logger = {
+  write(msg) {
+    return msg.toUpperCase();
+  },
+};
+
+function saveUser() {
+  logger.write("saved");
+}
+
+test("logs when saving", () => {
+  // spy on logger.write
+  saveUser();
+  // assert it was called with "saved"
+  // restore the spy
+});`,
+    },
+    solution: `const logger = {
+  write(msg) {
+    return msg.toUpperCase();
+  },
+};
+
+function saveUser() {
+  logger.write("saved");
+}
+
+test("logs when saving", () => {
+  const spy = jest.spyOn(logger, "write");
+  saveUser();
+  expect(spy).toHaveBeenCalledWith("saved");
+  spy.mockRestore();
+});`,
+    recap: [
+      "`jest.spyOn(obj, 'method')` wraps an existing method so you can watch its calls.",
+      "By default it calls through to the real method — behavior is unchanged.",
+      "Chain `.mockReturnValue` / `.mockImplementation` to fake the result instead.",
+      "Always `mockRestore()` to undo the spy and avoid leaking into other tests.",
+    ],
   },
 ];
 
@@ -662,6 +1347,12 @@ const conceptLessons = [
         text: "Think of tests like a smoke detector. Mildly annoying to install, easy to ignore — until the day something catches fire and it saves you.",
       },
     ],
+    recap: [
+      "Software breaks when you change it; manual testing doesn't scale.",
+      "A test is a tiny program that re-checks a behavior automatically, forever.",
+      "Tests give you confidence to refactor, a fast safety net, and living documentation.",
+      "The payoff compounds: it's the 100th change, not the first, where tests pay off.",
+    ],
   },
 
   {
@@ -707,6 +1398,12 @@ const conceptLessons = [
         text: "Jest was built by Meta and ships by default with Create React App, which is why it's everywhere in the React world. Cousins worth knowing: Vitest (modern, Vite-native, near-identical API) and Mocha + Chai. Learn Jest and the rest feel familiar.",
       },
     ],
+    recap: [
+      "Jest is three tools in one: a test runner, an assertion library, and a mocking framework.",
+      "The runner finds and runs test files and reports pass/fail.",
+      "`expect` + matchers decide whether something passed.",
+      "`jest.fn()` / `jest.mock()` replace real dependencies with controllable fakes.",
+    ],
   },
 
   {
@@ -746,6 +1443,12 @@ const conceptLessons = [
         type: "tip",
         text: "Fun fact: the runner powering this whole site uses the exact same two-phase model — collect describe/test callbacks, then run them and catch thrown assertions. You've been watching a mini-Jest the whole time.",
       },
+    ],
+    recap: [
+      "Jest works in two phases: collect all `describe`/`test` callbacks, then run them.",
+      "Each test file runs in its own isolated environment (jsdom or Node).",
+      "A failing `expect` throws; Jest catches it, marks the test red, and shows a diff.",
+      "Isolation + parallel workers are why thousands of tests stay fast and independent.",
     ],
   },
 
@@ -814,6 +1517,12 @@ expect(screen.getByText("You have 1 message")).toBeInTheDocument();`,
         text: "And that feeling of \"I had to use AI or I didn't know what to assert\"? That's often a signal the code's *contract* is unclear. Try describing the behavior in one sentence first — \"given X, it should return Y.\" That sentence IS your test.",
       },
     ],
+    recap: [
+      "Test behavior (inputs → outputs), not implementation details.",
+      "Focus on business logic, edge cases, and bugs you've already fixed.",
+      "Skip third-party code, trivial getters, and exact styling.",
+      "Ask: \"would this test fail for a reason I actually care about?\" If not, skip it.",
+    ],
   },
 
   {
@@ -873,6 +1582,12 @@ test("4 is even", () => {
 test("7 is not even", () => {
   expect(isEven(7)).toBe(false);
 });`,
+    recap: [
+      "TDD cycle: Red (failing test) → Green (simplest passing code) → Refactor.",
+      "Writing the test first forces you to define \"done\" before you code.",
+      "You build only what's needed and end up with tests for free.",
+      "You don't need TDD always — but it sharpens describing behavior clearly.",
+    ],
   },
 
   {
@@ -933,6 +1648,152 @@ jobs:
         type: "tip",
         text: "Mental model: code and its tests are a pair. A change isn't \"done\" until its tests are green and updated. CI just makes that rule impossible to skip.",
       },
+    ],
+    recap: [
+      "CI runs the whole suite automatically on every push/PR and blocks merging if it's red.",
+      "Pre-commit hooks and code review catch problems even before CI.",
+      "Update tests in the same PR as the code change — they travel together.",
+      "Fix or quarantine flaky tests fast; an untrustworthy test is worse than none.",
+    ],
+  },
+  {
+    slug: "snapshot-testing",
+    emoji: "📸",
+    title: "Snapshot Testing",
+    level: "Concept",
+    duration: "6 min",
+    track: "Foundations",
+    summary:
+      "Jest's \"take a photo and compare it later\" feature — powerful, but easy to misuse.",
+    blocks: [
+      {
+        type: "paragraph",
+        text: "A snapshot test captures the output of something (often a rendered component or a big object) and saves it to a file. On the next run, Jest compares the new output to the saved snapshot and fails if they differ.",
+      },
+      {
+        type: "code",
+        code: `test("renders the card", () => {\n  const tree = renderer.create(<Card title="Hi" />).toJSON();\n  expect(tree).toMatchSnapshot();\n});`,
+      },
+      {
+        type: "paragraph",
+        text: "The first run creates a `.snap` file next to your test. You commit that file. Later, if the output changes, the test fails and shows a diff. If the change was intentional, you update the snapshot with `jest --updateSnapshot` (or press `u` in watch mode).",
+      },
+      {
+        type: "heading",
+        text: "When they're great — and when they hurt",
+      },
+      {
+        type: "list",
+        items: [
+          "Good for: catching unexpected changes in stable, serializable output.",
+          "Bad when: snapshots are huge — nobody reviews a 500-line diff, so people just press `u`.",
+          "Rule of thumb: prefer small, focused assertions for important behavior; reach for snapshots for broad \"did the shape change?\" coverage.",
+        ],
+      },
+      {
+        type: "warning",
+        text: "The #1 snapshot anti-pattern: blindly running `--updateSnapshot` every time a test fails. That defeats the entire point — you're just re-photographing whatever the code does now, bug and all.",
+      },
+    ],
+    recap: [
+      "Snapshots save output to a file and compare future runs against it.",
+      "Commit `.snap` files; update them deliberately with `--updateSnapshot` only when the change is intended.",
+      "Keep snapshots small and reviewable — giant ones get rubber-stamped.",
+      "They complement, not replace, explicit behavior assertions.",
+    ],
+  },
+  {
+    slug: "react-testing-library",
+    emoji: "🧩",
+    title: "Testing React Components",
+    level: "Concept",
+    duration: "8 min",
+    track: "Foundations",
+    summary:
+      "How Jest pairs with React Testing Library to test components the way a user actually uses them.",
+    blocks: [
+      {
+        type: "paragraph",
+        text: "Jest runs your tests, but it doesn't know anything about React. For components, the standard partner is React Testing Library (RTL). Its guiding principle: test your UI the way a user would — find things by what's on screen, interact, and assert on what the user sees.",
+      },
+      {
+        type: "code",
+        code: `import { render, screen } from "@testing-library/react";\nimport userEvent from "@testing-library/user-event";\n\ntest("increments the counter", async () => {\n  render(<Counter />);\n\n  // find by accessible text, like a user would\n  await userEvent.click(screen.getByRole("button", { name: /add/i }));\n\n  expect(screen.getByText("Count: 1")).toBeInTheDocument();\n});`,
+      },
+      {
+        type: "heading",
+        text: "The core pieces",
+      },
+      {
+        type: "list",
+        items: [
+          "`render(<Component />)` mounts the component into a fake DOM (jsdom).",
+          "`screen.getByRole / getByText / getByLabelText` find elements the way users and screen readers do.",
+          "`userEvent` simulates real interactions — clicks, typing, tabbing.",
+          "`@testing-library/jest-dom` adds matchers like `toBeInTheDocument()` and `toBeDisabled()`.",
+        ],
+      },
+      {
+        type: "warning",
+        text: "Avoid testing internal state or implementation details (which hooks ran, private variables). Query by role/text and assert on what's rendered — those tests survive refactors.",
+      },
+      {
+        type: "tip",
+        text: "Mental model: if a test would still make sense described to a non-programmer (\"click Add, the count shows 1\"), it's testing behavior. That's the RTL sweet spot.",
+      },
+    ],
+    recap: [
+      "Jest runs the tests; React Testing Library renders and queries components.",
+      "Query by role/text/label — the way a user or screen reader finds things.",
+      "Use `userEvent` for realistic interactions and `jest-dom` matchers for assertions.",
+      "Test visible behavior, not implementation details, so tests survive refactors.",
+    ],
+  },
+  {
+    slug: "code-coverage",
+    emoji: "📊",
+    title: "Understanding Code Coverage",
+    level: "Concept",
+    duration: "6 min",
+    track: "Foundations",
+    summary:
+      "What that coverage percentage actually means — and why 100% is the wrong goal.",
+    blocks: [
+      {
+        type: "paragraph",
+        text: "Run `jest --coverage` and you get a report of how much of your code was executed while the tests ran. It's a useful map of untested areas — but it measures the wrong thing if you treat the number as a goal.",
+      },
+      {
+        type: "heading",
+        text: "The four numbers",
+      },
+      {
+        type: "list",
+        items: [
+          "Statements — what % of statements ran.",
+          "Branches — what % of if/else and ternary paths were taken.",
+          "Functions — what % of functions were called.",
+          "Lines — what % of lines executed.",
+        ],
+      },
+      {
+        type: "paragraph",
+        text: "Branch coverage is the most revealing: it's easy to call a function (100% function coverage) while never testing its `else` path. A high branch number means more of your decision points were actually exercised.",
+      },
+      {
+        type: "warning",
+        text: "Coverage tells you what code RAN, not whether it's CORRECT. You can have 100% coverage with zero real assertions. Chasing 100% leads to pointless tests for trivial code.",
+      },
+      {
+        type: "tip",
+        text: "Use coverage as a flashlight, not a scoreboard. Look at what's red to find risky untested logic — but let the value of the code, not the percentage, decide what's worth testing.",
+      },
+    ],
+    recap: [
+      "`jest --coverage` reports statements, branches, functions, and lines executed.",
+      "Branch coverage best reveals untested decision paths.",
+      "Coverage shows what ran, not whether it's correct — assertions still matter.",
+      "Treat it as a guide to gaps, not a target to maximize.",
     ],
   },
 ];

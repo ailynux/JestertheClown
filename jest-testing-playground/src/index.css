@@ -55,3 +55,47 @@ a {
 ::selection {
   background: rgba(46, 230, 110, 0.3);
 }
+
+/* ---- Prism neon syntax theme ---- */
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: #5c7a6b;
+  font-style: italic;
+}
+.token.punctuation {
+  color: #8aa79a;
+}
+.token.keyword,
+.token.boolean {
+  color: #ff79c6;
+}
+.token.function {
+  color: #7dd3fc;
+}
+.token.string,
+.token.char,
+.token.template-string {
+  color: #2ee66e;
+}
+.token.number {
+  color: #ffcc66;
+}
+.token.operator,
+.token.entity,
+.token.url {
+  color: #2dd4bf;
+}
+.token.class-name,
+.token.constant {
+  color: #a5f3c0;
+}
+.token.property,
+.token.parameter {
+  color: #e6f0ea;
+}
+.token.regex,
+.token.important {
+  color: #ffb86c;
+}

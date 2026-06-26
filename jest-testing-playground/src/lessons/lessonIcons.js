@@ -19,6 +19,12 @@ import TheaterComedyOutlinedIcon from "@mui/icons-material/TheaterComedyOutlined
 import PsychologyOutlinedIcon from "@mui/icons-material/PsychologyOutlined";
 import HandymanOutlinedIcon from "@mui/icons-material/HandymanOutlined";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import TableRowsOutlinedIcon from "@mui/icons-material/TableRowsOutlined";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import AltRouteOutlinedIcon from "@mui/icons-material/AltRouteOutlined";
+import CameraAltOutlinedIcon from "@mui/icons-material/CameraAltOutlined";
+import WidgetsOutlinedIcon from "@mui/icons-material/WidgetsOutlined";
+import DonutLargeOutlinedIcon from "@mui/icons-material/DonutLargeOutlined";
 
 const lessonIcons = {
   // Foundations
@@ -39,6 +45,13 @@ const lessonIcons = {
   "organizing-with-describe": AccountTreeOutlinedIcon,
   "async-testing": ScheduleOutlinedIcon,
   mocking: TheaterComedyOutlinedIcon,
+  "parametrized-tests": TableRowsOutlinedIcon,
+  spying: VisibilityOutlinedIcon,
+  "promises-resolves-rejects": AltRouteOutlinedIcon,
+  // Foundations (added)
+  "snapshot-testing": CameraAltOutlinedIcon,
+  "react-testing-library": WidgetsOutlinedIcon,
+  "code-coverage": DonutLargeOutlinedIcon,
 };
 
 export const trackIcons = {

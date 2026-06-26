@@ -14,6 +14,7 @@ import { motion } from "framer-motion";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
 import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import lessons, { TRACKS } from "../lessons/lessons";
 import { getLessonIcon, trackIcons } from "../lessons/lessonIcons";
 import { getCompleted } from "../lessons/progress";
@@ -50,6 +51,18 @@ const Learn = () => {
 
   return (
     <Container maxWidth="lg" sx={{ py: 6 }}>
+      <Typography
+        sx={{
+          fontFamily: '"JetBrains Mono", monospace',
+          fontSize: 12,
+          letterSpacing: "0.22em",
+          textTransform: "uppercase",
+          color: "rgba(46,230,110,0.7)",
+          mb: 1.2,
+        }}
+      >
+        {"// Your learning path"}
+      </Typography>
       <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
         <SchoolOutlinedIcon sx={{ fontSize: 34, color: "#2ee66e" }} />
         <Typography variant="h3">The Curriculum</Typography>
@@ -86,11 +99,31 @@ const Learn = () => {
         const trackLessons = lessons.filter((l) => l.track === track);
         const meta = trackMeta[track] || {};
         const TrackIcon = trackIcons[track];
+        const trackDone = trackLessons.filter((l) => completed[l.slug]).length;
         return (
           <Box key={track} sx={{ mb: 6 }}>
-            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 0.5 }}>
-              {TrackIcon && <TrackIcon sx={{ fontSize: 28, color: "#2dd4bf" }} />}
-              <Typography variant="h4">{track}</Typography>
+            <Stack
+              direction="row"
+              spacing={1.5}
+              alignItems="center"
+              justifyContent="space-between"
+              sx={{ mb: 0.5 }}
+            >
+              <Stack direction="row" spacing={1.5} alignItems="center">
+                {TrackIcon && <TrackIcon sx={{ fontSize: 28, color: "#2dd4bf" }} />}
+                <Typography variant="h4">{track}</Typography>
+              </Stack>
+              <Chip
+                size="small"
+                label={`${trackDone} / ${trackLessons.length}`}
+                sx={{
+                  fontFamily: '"JetBrains Mono", monospace',
+                  color: trackDone === trackLessons.length ? "#04150b" : "#7fe7d3",
+                  backgroundColor:
+                    trackDone === trackLessons.length ? "#2ee66e" : "rgba(45,212,191,0.12)",
+                  border: "1px solid rgba(45,212,191,0.3)",
+                }}
+              />
             </Stack>
             <Typography sx={{ color: "text.secondary", mb: 3 }}>{meta.blurb}</Typography>
 
@@ -168,6 +201,14 @@ const Learn = () => {
                             label={isReading ? "Read" : "Exercise"}
                             sx={{ color: "text.secondary", backgroundColor: "rgba(255,255,255,0.05)" }}
                           />
+                          {lesson.duration && (
+                            <Chip
+                              size="small"
+                              icon={<AccessTimeIcon sx={{ fontSize: 14, color: "inherit !important" }} />}
+                              label={lesson.duration}
+                              sx={{ color: "text.secondary", backgroundColor: "rgba(255,255,255,0.05)" }}
+                            />
+                          )}
                         </Stack>
                       </Paper>
                     </motion.div>

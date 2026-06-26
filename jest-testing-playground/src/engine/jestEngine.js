@@ -80,11 +80,13 @@ export function pretty(value) {
 
 function createMockFn(implementation) {
   let impl = implementation;
+  const onceQueue = [];
   const mockFn = function (...args) {
     mockFn.mock.calls.push(args);
+    const activeImpl = onceQueue.length ? onceQueue.shift() : impl;
     let result;
     try {
-      result = impl ? impl.apply(this, args) : undefined;
+      result = activeImpl ? activeImpl.apply(this, args) : undefined;
       mockFn.mock.results.push({ type: "return", value: result });
     } catch (error) {
       mockFn.mock.results.push({ type: "throw", value: error });
@@ -99,13 +101,35 @@ function createMockFn(implementation) {
     impl = () => value;
     return mockFn;
   };
+  mockFn.mockReturnValueOnce = (value) => {
+    onceQueue.push(() => value);
+    return mockFn;
+  };
   mockFn.mockImplementation = (fn) => {
     impl = fn;
+    return mockFn;
+  };
+  mockFn.mockImplementationOnce = (fn) => {
+    onceQueue.push(fn);
+    return mockFn;
+  };
+  mockFn.mockResolvedValue = (value) => {
+    impl = () => Promise.resolve(value);
+    return mockFn;
+  };
+  mockFn.mockRejectedValue = (value) => {
+    impl = () => Promise.reject(value);
     return mockFn;
   };
   mockFn.mockClear = () => {
     mockFn.mock.calls = [];
     mockFn.mock.results = [];
+    return mockFn;
+  };
+  mockFn.mockReset = () => {
+    mockFn.mockClear();
+    impl = undefined;
+    onceQueue.length = 0;
     return mockFn;
   };
 
@@ -114,6 +138,23 @@ function createMockFn(implementation) {
 
 const jestApi = {
   fn: (impl) => createMockFn(impl),
+  // Replace obj[method] with a mock that still calls the original by default.
+  spyOn: (obj, method) => {
+    const original = obj[method];
+    if (typeof original !== "function") {
+      throw new Error(`Cannot spy on ${String(method)}: it is not a function`);
+    }
+    const mock = createMockFn(function (...args) {
+      return original.apply(this, args);
+    });
+    mock.mockRestore = () => {
+      obj[method] = original;
+      return mock;
+    };
+    obj[method] = mock;
+    return mock;
+  },
+  clearAllMocks: () => {},
 };
 
 /* ------------------------------ matchers ----------------------------- */
@@ -265,9 +306,51 @@ function buildMatchers(received, isNot) {
   };
 }
 
+// Matcher names, derived once so the async wrappers stay in sync automatically.
+const MATCHER_NAMES = Object.keys(buildMatchers(undefined, false));
+
+// Builds .resolves / .rejects: await the promise, then run the normal matcher
+// against the resolved value (or the thrown error, for rejects).
+function buildAsyncMatchers(received, isNot, isRejects) {
+  const wrap = {};
+  for (const name of MATCHER_NAMES) {
+    wrap[name] = async (...args) => {
+      let value;
+      let threw = false;
+      let err;
+      try {
+        value = await received;
+      } catch (e) {
+        threw = true;
+        err = e;
+      }
+      if (isRejects) {
+        if (!threw) {
+          throw new AssertionError(
+            `expect(received).rejects.${name}()\n\nExpected the promise to reject, but it resolved to: ${pretty(value)}`
+          );
+        }
+        const target = name === "toThrow" ? () => { throw err; } : err;
+        return buildMatchers(target, isNot)[name](...args);
+      }
+      if (threw) {
+        throw new AssertionError(
+          `expect(received).resolves.${name}()\n\nExpected the promise to resolve, but it rejected with: ${pretty(err)}`
+        );
+      }
+      return buildMatchers(value, isNot)[name](...args);
+    };
+  }
+  return wrap;
+}
+
 function expect(received) {
   const matchers = buildMatchers(received, false);
   matchers.not = buildMatchers(received, true);
+  matchers.resolves = buildAsyncMatchers(received, false, false);
+  matchers.resolves.not = buildAsyncMatchers(received, true, false);
+  matchers.rejects = buildAsyncMatchers(received, false, true);
+  matchers.rejects.not = buildAsyncMatchers(received, true, true);
   return matchers;
 }
 
@@ -304,6 +387,30 @@ export async function runTests(code) {
   const test = (name, fn) => {
     current.tests.push({ name, fn });
   };
+
+  // test.each(table)(name, fn) — runs the test once per row. Each row may be an
+  // array (spread as arguments) or a single value. Supports %s/%d/%i/%p/%# in
+  // the test name.
+  const formatEachName = (name, args, index) => {
+    let i = 0;
+    let out = name.replace(/%[sdipf#]/g, (token) => {
+      if (token === "%#") return String(index);
+      const a = args[i++];
+      return typeof a === "string" ? a : pretty(a);
+    });
+    if (i === 0) out = `${name} [${args.map(pretty).join(", ")}]`;
+    return out;
+  };
+  const makeEach = () => (table) => (name, fn) => {
+    table.forEach((row, index) => {
+      const args = Array.isArray(row) ? row : [row];
+      current.tests.push({
+        name: formatEachName(name, args, index),
+        fn: () => fn(...args),
+      });
+    });
+  };
+  test.each = makeEach();
 
   const api = {
     describe,

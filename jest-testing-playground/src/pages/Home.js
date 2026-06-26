@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Container, Typography, Button, Stack, Grid, Paper, Chip } from "@mui/material";
+import { Box, Container, Typography, Button, Stack, Grid, Paper, Chip, Divider } from "@mui/material";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import PsychologyIcon from "@mui/icons-material/Psychology";
@@ -8,6 +8,29 @@ import ScienceIcon from "@mui/icons-material/Science";
 import TestRunner from "../components/TestRunner";
 import lessons from "../lessons/lessons";
 import { getLessonIcon } from "../lessons/lessonIcons";
+
+// Small uppercase eyebrow label used above each section heading.
+const Eyebrow = ({ children }) => (
+  <Typography
+    sx={{
+      fontFamily: '"JetBrains Mono", monospace',
+      fontSize: 12,
+      letterSpacing: "0.22em",
+      textTransform: "uppercase",
+      color: "rgba(46,230,110,0.7)",
+      mb: 1.2,
+    }}
+  >
+    {children}
+  </Typography>
+);
+
+const stats = [
+  { value: `${lessons.length}`, label: "guided lessons" },
+  { value: "24", label: "playground scenarios" },
+  { value: "100%", label: "runs in your browser" },
+  { value: "0", label: "setup required" },
+];
 
 const features = [
   {
@@ -169,6 +192,61 @@ const Home = () => {
             </Stack>
           </motion.div>
         </Container>
+
+        {/* Stats / trust band */}
+        <Container maxWidth="lg" sx={{ pb: { xs: 5, md: 7 } }}>
+          <Paper
+            sx={{
+              py: { xs: 2.5, md: 3 },
+              px: { xs: 1, md: 3 },
+              border: "1px solid rgba(46,230,110,0.15)",
+              background:
+                "linear-gradient(180deg, rgba(46,230,110,0.05), rgba(255,255,255,0))",
+            }}
+          >
+            <Grid container alignItems="center">
+              {stats.map((s, i) => (
+                <Grid
+                  item
+                  xs={6}
+                  md={3}
+                  key={s.label}
+                  sx={{
+                    textAlign: "center",
+                    py: { xs: 1.5, md: 0 },
+                    borderRight: {
+                      md: i < stats.length - 1 ? "1px solid rgba(255,255,255,0.08)" : "none",
+                    },
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      fontFamily: '"Chakra Petch", sans-serif',
+                      fontWeight: 700,
+                      fontSize: { xs: 28, md: 34 },
+                      lineHeight: 1,
+                      background: "linear-gradient(90deg,#2ee66e,#2dd4bf)",
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                    }}
+                  >
+                    {s.value}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      color: "text.secondary",
+                      fontSize: 13,
+                      letterSpacing: "0.04em",
+                      mt: 0.6,
+                    }}
+                  >
+                    {s.label}
+                  </Typography>
+                </Grid>
+              ))}
+            </Grid>
+          </Paper>
+        </Container>
       </Box>
 
       {/* Live demo */}
@@ -179,14 +257,16 @@ const Home = () => {
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
         >
+          <Eyebrow>{"// Live runner"}</Eyebrow>
+          <Typography variant="h4" sx={{ mb: 1 }}>
+            Try it right now
+          </Typography>
+          <Typography sx={{ color: "text.secondary", mb: 3, maxWidth: 620 }}>
+            No sandbox to install, no config to write. This is a fully working
+            test runner — hit <strong>Run Tests</strong>, then change a value to
+            watch a test turn red.
+          </Typography>
           <Paper sx={{ p: { xs: 2, md: 4 }, border: "1px solid rgba(46,230,110,0.18)" }}>
-            <Typography variant="h5" sx={{ mb: 1 }}>
-              Try it right now
-            </Typography>
-            <Typography sx={{ color: "text.secondary", mb: 3 }}>
-              This is a fully working test runner. Hit <strong>Run Tests</strong>, then
-              change a value to watch a test turn red.
-            </Typography>
             <TestRunner initialCode={demoCode} minRows={9} />
           </Paper>
         </motion.div>
@@ -194,6 +274,10 @@ const Home = () => {
 
       {/* Features */}
       <Container maxWidth="lg" sx={{ pb: 8 }}>
+        <Box sx={{ mb: 3 }}>
+          <Eyebrow>{"// Why it works"}</Eyebrow>
+          <Typography variant="h4">Built to actually make it stick</Typography>
+        </Box>
         <Grid container spacing={3}>
           {features.map((f, i) => (
             <Grid item xs={12} md={4} key={f.title}>
@@ -243,6 +327,7 @@ const Home = () => {
 
       {/* Curriculum teaser */}
       <Container maxWidth="md" sx={{ pb: 10, textAlign: "center" }}>
+        <Eyebrow>{"// The curriculum"}</Eyebrow>
         <Typography variant="h4" sx={{ mb: 1 }}>
           {lessons.length} lessons, zero fluff
         </Typography>
@@ -264,11 +349,30 @@ const Home = () => {
                   m: 0.5,
                   backgroundColor: "rgba(255,255,255,0.04)",
                   border: "1px solid rgba(255,255,255,0.1)",
-                  "&:hover": { backgroundColor: "rgba(46,230,110,0.15)", borderColor: "rgba(46,230,110,0.5)" },
+                  transition: "background-color 0.2s, border-color 0.2s, transform 0.2s",
+                  "&:hover": {
+                    backgroundColor: "rgba(46,230,110,0.15)",
+                    borderColor: "rgba(46,230,110,0.5)",
+                    transform: "translateY(-2px)",
+                  },
                 }}
               />
             );
           })}
+        </Stack>
+
+        <Divider sx={{ my: 5, borderColor: "rgba(255,255,255,0.08)" }} />
+
+        <Typography variant="h5" sx={{ mb: 2 }}>
+          Ready to step into the ring?
+        </Typography>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} justifyContent="center">
+          <Button component={Link} to="/learn" variant="contained" color="primary" size="large" sx={{ px: 4, fontWeight: 700 }}>
+            Start with the basics →
+          </Button>
+          <Button component={Link} to="/playground" variant="outlined" color="inherit" size="large" sx={{ px: 4, borderColor: "rgba(46,230,110,0.4)", color: "#cdeedd" }}>
+            Jump into the Playground
+          </Button>
         </Stack>
       </Container>
     </Box>
